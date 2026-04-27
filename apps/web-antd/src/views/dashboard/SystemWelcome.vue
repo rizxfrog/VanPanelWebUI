@@ -265,6 +265,17 @@ const moduleData = ref({
 // 图表周期
 const chartPeriod = ref('24h');
 
+const getTrendPointCount = () => (chartPeriod.value === '1h' ? 12 : chartPeriod.value === '24h' ? 12 : 7);
+
+const createFilledSeries = (value: number, points: number) =>
+  Array.from({ length: points }, () => parseFloat((value || 0).toFixed(1)));
+
+const trendHistory = ref({
+  cpu: [] as number[],
+  memory: [] as number[],
+  load: [] as number[],
+});
+
 // 事件列表（初始化为空）
 const events = ref<Array<{id: string, type: string, message: string, time: string}>>([]);
 
@@ -533,9 +544,23 @@ const updateTrendChart = () => {
   if (!trendChartInstance) return;
   
   const systemMetrics = moduleData.value.systemMetrics;
-  const currentCpu = systemMetrics?.cpu_usage || 0;
-  const currentMemory = systemMetrics?.memory_usage || 0;
-  
+  const points = getTrendPointCount();
+
+  if (trendHistory.value.cpu.length !== points) {
+    const cpu = parseFloat((systemMetrics?.cpu_usage || 0).toFixed(1));
+    const memory = parseFloat((systemMetrics?.memory_usage || 0).toFixed(1));
+    const load = parseFloat(
+      (
+        systemMetrics && systemMetrics.load_avg_1 > 0 && systemMetrics.cpu_cores > 0
+          ? systemMetrics.load_avg_1 / systemMetrics.cpu_cores
+          : 0
+      ).toFixed(2),
+    );
+    trendHistory.value.cpu = createFilledSeries(cpu, points);
+    trendHistory.value.memory = createFilledSeries(memory, points);
+    trendHistory.value.load = createFilledSeries(load, points);
+  }
+
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -631,7 +656,7 @@ const updateTrendChart = () => {
         name: 'CPU使用率',
         type: 'line',
         smooth: true,
-        data: generateDataWithCurrent(currentCpu),
+        data: trendHistory.value.cpu,
         itemStyle: {
           color: '#1890ff'
         },
@@ -653,7 +678,7 @@ const updateTrendChart = () => {
         name: '内存使用率',
         type: 'line',
         smooth: true,
-        data: generateDataWithCurrent(currentMemory),
+        data: trendHistory.value.memory,
         itemStyle: {
           color: '#52c41a'
         }
@@ -663,7 +688,7 @@ const updateTrendChart = () => {
         type: 'line',
         smooth: true,
         yAxisIndex: 1,
-        data: generateDataWithCurrent(systemMetrics && systemMetrics.load_avg_1 > 0 && systemMetrics.cpu_cores > 0 ? systemMetrics.load_avg_1 / systemMetrics.cpu_cores : 0),
+        data: trendHistory.value.load,
         itemStyle: {
           color: '#faad14'
         }
@@ -695,26 +720,42 @@ const generateTimeLabels = () => {
   return labels;
 };
 
-// 生成包含当前值的历史数据
-const generateDataWithCurrent = (currentValue: number) => {
-  const points = chartPeriod.value === '1h' ? 12 : chartPeriod.value === '24h' ? 12 : 7;
-  const data = [];
-  
-  // 生成历史数据（模拟波动）
-  for (let i = 0; i < points - 1; i++) {
-    const variation = (Math.random() - 0.5) * 20; // ±10的变化
-    const value = Math.max(0, Math.min(100, currentValue + variation));
-    data.push(parseFloat(value.toFixed(1)));
-  }
-  
-  // 最后一个点是当前值
-  data.push(parseFloat(currentValue.toFixed(1)));
-  
-  return data;
+// 维护趋势历史序列（真实滚动值，不使用随机模拟）
+const updateTrendHistory = () => {
+  const systemMetrics = moduleData.value.systemMetrics;
+  if (!systemMetrics) return;
+
+  const points = getTrendPointCount();
+  const cpu = parseFloat((systemMetrics.cpu_usage || 0).toFixed(1));
+  const memory = parseFloat((systemMetrics.memory_usage || 0).toFixed(1));
+  const load = parseFloat(
+    (
+      systemMetrics && systemMetrics.load_avg_1 > 0 && systemMetrics.cpu_cores > 0
+        ? systemMetrics.load_avg_1 / systemMetrics.cpu_cores
+        : 0
+    ).toFixed(2),
+  );
+
+  const append = (series: number[], value: number) => {
+    if (series.length === 0) {
+      series.push(...createFilledSeries(value, points));
+      return;
+    }
+    series.push(value);
+    while (series.length > points) {
+      series.shift();
+    }
+  };
+
+  append(trendHistory.value.cpu, cpu);
+  append(trendHistory.value.memory, memory);
+  append(trendHistory.value.load, load);
 };
 
 // 更新所有图表
 const updateCharts = () => {
+  updateTrendHistory();
+
   // 更新趋势图
   updateTrendChart();
   
@@ -1056,8 +1097,10 @@ onMounted(async () => {
     // Error loading system data on mount
   });
   
-  // 设置定时更新（每30秒更新一次以减少服务器负载）
-  dataTimer = setInterval(updateLiveData, 30000);
+  // 设置定时更新频率，默认2000ms (2s)，可从环境变量配置
+  const refreshInterval = import.meta.env.VITE_DASHBOARD_REFRESH_INTERVAL ? parseInt(import.meta.env.VITE_DASHBOARD_REFRESH_INTERVAL as string) : 2000;
+  
+  dataTimer = setInterval(updateLiveData, refreshInterval);
   
   // 延迟初始化图表，确保DOM已渲染
   setTimeout(() => {

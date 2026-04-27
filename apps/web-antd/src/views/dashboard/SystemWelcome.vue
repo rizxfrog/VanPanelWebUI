@@ -23,98 +23,29 @@
       </div>
     </div>
 
-    <!-- 核心指标卡片 -->
-    <a-row :gutter="[16, 16]" class="metrics-section">
-      <a-col :xs="24" :sm="12" :md="6" v-for="metric in metrics" :key="metric.key">
-        <div class="metric-card">
-          <div class="metric-info">
-            <span class="metric-label">{{ metric.label }}</span>
-            <span class="metric-value">{{ metric.value }}</span>
-            <span class="metric-unit">{{ metric.unit }}</span>
+    <!-- 顶部资源卡片（1Panel风格） -->
+    <a-row :gutter="[16, 16]" class="resource-top-section">
+      <a-col :xs="24" :sm="12" :lg="6" v-for="resource in resources" :key="resource.name">
+        <div class="resource-card panel-style">
+          <div class="resource-header">
+            <span class="resource-name">{{ resource.name }}</span>
+            <span class="resource-value">{{ resource.usage }}%</span>
           </div>
-          <div class="metric-trend" :class="`trend-${metric.trend}`">
-            <span>{{ metric.change }}</span>
+          <a-progress
+            :percent="resource.usage"
+            :stroke-color="getProgressColor(resource.usage)"
+            :show-info="false"
+            :stroke-width="8"
+          />
+          <div class="resource-details">
+            <span>{{ resource.detail }}</span>
           </div>
-          <div class="metric-chart" :ref="(el) => { if (el) chartRefs[metric.key] = el as HTMLElement }"></div>
         </div>
       </a-col>
     </a-row>
 
-    <!-- 系统概览区 -->
+    <!-- 中部：性能趋势 + 系统信息列表 -->
     <a-row :gutter="[16, 16]" class="overview-section">
-      <a-col :xs="24" :lg="12">
-        <div class="system-info-card">
-          <div class="card-header">
-            <h3 class="card-title">系统信息</h3>
-            <a-button size="small" @click="refreshSystemData" :loading="refreshing">
-              刷新
-            </a-button>
-          </div>
-          <div class="system-info-grid">
-            <div class="info-item">
-              <span class="info-label">主机名</span>
-              <span class="info-value" :title="moduleData.systemInfo?.hostname || '--'">{{ moduleData.systemInfo?.hostname || '--' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">操作系统</span>
-              <span class="info-value os-info" :title="`${moduleData.systemInfo?.os || '--'} ${moduleData.systemInfo?.os_version || ''}`">
-                {{ moduleData.systemInfo?.os || '--' }} {{ moduleData.systemInfo?.os_version || '' }}
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">系统架构</span>
-              <span class="info-value">{{ moduleData.systemInfo?.arch || '--' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">CPU型号</span>
-              <span class="info-value cpu-model" :title="moduleData.systemInfo?.cpu_model || '--'">
-                {{ moduleData.systemInfo?.cpu_model || '--' }}
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">CPU核心数</span>
-              <span class="info-value">{{ moduleData.systemInfo?.cpu_cores || '--' }} 核</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">系统负载</span>
-              <span class="info-value load-values" :title="
-                moduleData.systemMetrics && (moduleData.systemMetrics.load_avg_1 > 0 || moduleData.systemMetrics.load_avg_5 > 0 || moduleData.systemMetrics.load_avg_15 > 0) 
-                  ? `1分钟: ${moduleData.systemMetrics.load_avg_1?.toFixed(2) || '0.00'}, 5分钟: ${moduleData.systemMetrics.load_avg_5?.toFixed(2) || '0.00'}, 15分钟: ${moduleData.systemMetrics.load_avg_15?.toFixed(2) || '0.00'}`
-                  : '暂无数据'
-              ">
-                {{ 
-                  moduleData.systemMetrics && (moduleData.systemMetrics.load_avg_1 > 0 || moduleData.systemMetrics.load_avg_5 > 0 || moduleData.systemMetrics.load_avg_15 > 0) 
-                    ? `${moduleData.systemMetrics.load_avg_1?.toFixed(2) || '0.00'} / ${moduleData.systemMetrics.load_avg_5?.toFixed(2) || '0.00'} / ${moduleData.systemMetrics.load_avg_15?.toFixed(2) || '0.00'}`
-                    : '--'
-                }}
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">运行时长</span>
-              <span class="info-value">{{ moduleData.systemMetrics?.uptime_formatted || formatUptime(moduleData.systemMetrics?.uptime) }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">进程数</span>
-              <span class="info-value">{{ moduleData.systemMetrics?.process_count || '--' }}</span>
-            </div>
-          </div>
-        </div>
-      </a-col>
-      
-      <a-col :xs="24" :lg="12">
-        <div class="network-card">
-          <div class="card-header">
-            <h3 class="card-title">网络流量</h3>
-            <a-badge status="processing" text="实时监控" />
-          </div>
-          <div ref="networkChart" class="chart-container-small"></div>
-        </div>
-      </a-col>
-    </a-row>
-
-    <!-- 主要内容区 -->
-    <a-row :gutter="[16, 16]" class="content-section">
-      <!-- 性能趋势图表 -->
       <a-col :xs="24" :lg="16">
         <div class="chart-card">
           <div class="card-header">
@@ -129,8 +60,29 @@
         </div>
       </a-col>
 
-      <!-- 实时事件流 -->
       <a-col :xs="24" :lg="8">
+        <div class="system-info-list-card">
+          <div class="card-header">
+            <h3 class="card-title">系统信息</h3>
+            <a-button size="small" @click="refreshSystemData" :loading="refreshing">刷新</a-button>
+          </div>
+          <ul class="system-info-list">
+            <li><span class="list-label">主机名</span><span class="list-value">{{ moduleData.systemInfo?.hostname || '--' }}</span></li>
+            <li><span class="list-label">操作系统</span><span class="list-value">{{ moduleData.systemInfo?.os || '--' }} {{ moduleData.systemInfo?.os_version || '' }}</span></li>
+            <li><span class="list-label">系统架构</span><span class="list-value">{{ moduleData.systemInfo?.arch || '--' }}</span></li>
+            <li><span class="list-label">CPU型号</span><span class="list-value">{{ moduleData.systemInfo?.cpu_model || '--' }}</span></li>
+            <li><span class="list-label">CPU核心数</span><span class="list-value">{{ moduleData.systemInfo?.cpu_cores || '--' }} 核</span></li>
+            <li><span class="list-label">系统负载</span><span class="list-value">{{ `${moduleData.systemMetrics?.load_avg_1?.toFixed(2) || '0.00'} / ${moduleData.systemMetrics?.load_avg_5?.toFixed(2) || '0.00'} / ${moduleData.systemMetrics?.load_avg_15?.toFixed(2) || '0.00'}` }}</span></li>
+            <li><span class="list-label">运行时长</span><span class="list-value">{{ moduleData.systemMetrics?.uptime_formatted || formatUptime(moduleData.systemMetrics?.uptime) }}</span></li>
+            <li><span class="list-label">进程数</span><span class="list-value">{{ moduleData.systemMetrics?.process_count || '--' }}</span></li>
+          </ul>
+        </div>
+      </a-col>
+    </a-row>
+
+    <!-- 实时事件 -->
+    <a-row :gutter="[16, 16]" class="content-section">
+      <a-col :xs="24">
         <div class="event-card">
           <div class="card-header">
             <h3 class="card-title">实时事件</h3>
@@ -151,23 +103,19 @@
       </a-col>
     </a-row>
 
-    <!-- 资源使用情况 -->
-    <a-row :gutter="[16, 16]" class="resource-section">
-      <a-col :xs="24" :sm="12" :lg="6" v-for="resource in resources" :key="resource.name">
-        <div class="resource-card">
-          <div class="resource-header">
-            <span class="resource-name">{{ resource.name }}</span>
-            <span class="resource-value">{{ resource.usage }}%</span>
+    <!-- 页面底部核心指标卡片 -->
+    <a-row :gutter="[16, 16]" class="metrics-section bottom-metrics">
+      <a-col :xs="24" :sm="12" :md="6" v-for="metric in metrics" :key="metric.key">
+        <div class="metric-card">
+          <div class="metric-info">
+            <span class="metric-label">{{ metric.label }}</span>
+            <span class="metric-value">{{ metric.value }}</span>
+            <span class="metric-unit">{{ metric.unit }}</span>
           </div>
-          <a-progress 
-            :percent="resource.usage" 
-            :stroke-color="getProgressColor(resource.usage)"
-            :show-info="false"
-            :stroke-width="8"
-          />
-          <div class="resource-details">
-            <span>{{ resource.detail }}</span>
+          <div class="metric-trend" :class="`trend-${metric.trend}`">
+            <span>{{ metric.change }}</span>
           </div>
+          <div class="metric-chart" :ref="(el) => { if (el) chartRefs[metric.key] = el as HTMLElement }"></div>
         </div>
       </a-col>
     </a-row>
@@ -178,14 +126,14 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 // 按需引入echarts，减少打包体积
 import * as echarts from 'echarts/core';
-import { BarChart, LineChart, PieChart } from 'echarts/charts';
+import { BarChart, LineChart } from 'echarts/charts';
 import { GridComponent, TooltipComponent, LegendComponent, TitleComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { EChartsType } from 'echarts/core';
 
 // 注册必需的组件
 echarts.use([
-  BarChart, LineChart, PieChart,
+  BarChart, LineChart,
   GridComponent, TooltipComponent, LegendComponent, TitleComponent,
   CanvasRenderer
 ]);
@@ -287,7 +235,7 @@ const resources = computed(() => {
       { name: 'CPU', usage: 0, detail: '获取中...' },
       { name: '内存', usage: 0, detail: '获取中...' },
       { name: '存储', usage: 0, detail: '获取中...' },
-      { name: '网络', usage: 0, detail: '获取中...' }
+      { name: '负载度', usage: 0, detail: '获取中...' }
     ];
   }
   
@@ -308,9 +256,16 @@ const resources = computed(() => {
       detail: systemMetrics.disk_usage_formatted || (systemMetrics.disk_total > 0 ? `${systemMetrics.disk_used?.toFixed(1) || 0} GB / ${systemMetrics.disk_total?.toFixed(1) || 0} GB` : '暂无数据')
     },
     {
-      name: '网络',
-      usage: Math.min(100, Math.round(((systemMetrics.network_in || 0) + (systemMetrics.network_out || 0)) / 1024 / 1024 * 10)), // 网络使用率基于流量大小
-      detail: `入: ${formatBytes(systemMetrics.network_in || 0)} 出: ${formatBytes(systemMetrics.network_out || 0)}`
+      name: '负载度',
+      usage: Math.min(
+        100,
+        Math.round(
+          (systemMetrics.load_avg_1 > 0 && systemMetrics.cpu_cores > 0
+            ? (systemMetrics.load_avg_1 / systemMetrics.cpu_cores) * 100
+            : 0),
+        ),
+      ),
+      detail: `1m: ${systemMetrics.load_avg_1?.toFixed(2) || '0.00'} 5m: ${systemMetrics.load_avg_5?.toFixed(2) || '0.00'} 15m: ${systemMetrics.load_avg_15?.toFixed(2) || '0.00'}`
     }
   ];
 });
@@ -318,9 +273,7 @@ const resources = computed(() => {
 // 图表引用
 const chartRefs = ref<Record<string, HTMLElement>>({});
 const trendChart = ref<HTMLElement | null>(null);
-const networkChart = ref<HTMLElement | null>(null);
 let trendChartInstance: EChartsType | null = null;
-let networkChartInstance: EChartsType | null = null;
 const miniCharts: Record<string, EChartsType> = {};
 
 // 刷新状态
@@ -462,67 +415,6 @@ const initMiniChart = (element: HTMLElement, data: number[], color = '#1890ff'):
     }]
   });
   return chart;
-};
-
-// 初始化网络流量图表
-const initNetworkChart = () => {
-  if (!networkChart.value) return;
-  
-  // 检查是否已有实例，如果有则先销毁
-  const existingInstance = echarts.getInstanceByDom(networkChart.value);
-  if (existingInstance && !existingInstance.isDisposed()) {
-    existingInstance.dispose();
-  }
-  
-  networkChartInstance = echarts.init(networkChart.value);
-  
-  const systemMetrics = moduleData.value.systemMetrics;
-  const networkIn = systemMetrics?.network_in || 0;
-  const networkOut = systemMetrics?.network_out || 0;
-  
-  // 转换为MB显示
-  const networkInMB = Math.round(networkIn / 1024 / 1024 * 100) / 100;
-  const networkOutMB = Math.round(networkOut / 1024 / 1024 * 100) / 100;
-  
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: any) => {
-        return `${params.seriesName}<br/>${params.name}: ${params.value} MB (${params.percent}%)`;
-      }
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left',
-      textStyle: {
-        color: '#8c8c8c',
-        fontSize: 12
-      }
-    },
-    series: [
-      {
-        name: '网络流量',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['60%', '50%'],
-        data: [
-          { value: networkInMB, name: '入流量', itemStyle: { color: '#52c41a' } },
-          { value: networkOutMB, name: '出流量', itemStyle: { color: '#1890ff' } }
-        ],
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
-          }
-        }
-      }
-    ]
-  };
-  
-  if (networkChartInstance) {
-    networkChartInstance.setOption(option);
-  }
 };
 
 // 初始化趋势图表
@@ -758,11 +650,6 @@ const updateCharts = () => {
 
   // 更新趋势图
   updateTrendChart();
-  
-  // 更新网络图表
-  if (networkChartInstance) {
-    initNetworkChart();
-  }
   
   // 更新迷你图表
   metrics.value.forEach(metric => {
@@ -1075,9 +962,6 @@ const handleResize = () => {
   if (trendChartInstance && !trendChartInstance.isDisposed()) {
     trendChartInstance.resize();
   }
-  if (networkChartInstance && !networkChartInstance.isDisposed()) {
-    networkChartInstance.resize();
-  }
   Object.values(miniCharts).forEach((chart: any) => {
     if (chart && !chart.isDisposed()) {
       chart.resize();
@@ -1105,7 +989,6 @@ onMounted(async () => {
   // 延迟初始化图表，确保DOM已渲染
   setTimeout(() => {
     initTrendChart();
-    initNetworkChart();
     updateCharts();
   }, 200);
   
@@ -1124,10 +1007,6 @@ onUnmounted(() => {
   if (trendChartInstance && !trendChartInstance.isDisposed()) {
     trendChartInstance.dispose();
     trendChartInstance = null;
-  }
-  if (networkChartInstance && !networkChartInstance.isDisposed()) {
-    networkChartInstance.dispose();
-    networkChartInstance = null;
   }
   Object.values(miniCharts).forEach((chart: any) => {
     if (chart && !chart.isDisposed()) {
@@ -1260,6 +1139,14 @@ onUnmounted(() => {
   margin-bottom: 24px;
 }
 
+.resource-top-section {
+  margin-bottom: 24px;
+}
+
+.bottom-metrics {
+  margin-top: 4px;
+}
+
 .metric-card {
   background: white;
   border-radius: 8px;
@@ -1334,107 +1221,56 @@ onUnmounted(() => {
   margin-bottom: 24px;
 }
 
-.system-info-card,
-.network-card {
+.system-info-list-card {
   background: white;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  height: 320px;
+  height: 420px;
   transition: all 0.3s ease;
   border: 1px solid #f0f0f0;
 }
 
-.system-info-card:hover,
-.network-card:hover {
+.system-info-list-card:hover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
   border-color: #d9d9d9;
 }
 
-.system-info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.info-item {
+.system-info-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
-  background: #fafafa;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  min-height: 55px;
-  position: relative;
-  overflow: hidden;
+  gap: 10px;
 }
 
-.info-item:hover {
-  background: #f5f5f5;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+.system-info-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px dashed #f0f0f0;
 }
 
-.info-item-wide {
-  grid-column: span 2;
+.system-info-list li:last-child {
+  border-bottom: none;
 }
 
-.info-label {
+.list-label {
   font-size: 12px;
   color: #8c8c8c;
-  font-weight: 500;
-  margin-bottom: 2px;
+  white-space: nowrap;
 }
 
-.info-value {
+.list-value {
   font-size: 13px;
   color: #262626;
   font-weight: 600;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: right;
   word-break: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  max-height: 2.6em;
-}
-
-.cpu-model {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  max-height: 2.6em;
-  font-size: 12px;
-}
-
-.load-values {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.3px;
-  line-height: 1.2;
-}
-
-.os-info {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: normal;
-  max-height: 2.6em;
-  font-size: 12px;
-}
-
-.chart-container-small {
-  height: 240px;
-  width: 100%;
 }
 
 /* 内容区 */
@@ -1569,7 +1405,7 @@ onUnmounted(() => {
 }
 
 /* 资源卡片 */
-.resource-section {
+.resource-top-section {
   margin-bottom: 24px;
 }
 
@@ -1580,6 +1416,10 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid #f0f0f0;
   transition: all 0.3s ease;
+}
+
+.panel-style {
+  min-height: 128px;
 }
 
 .resource-card:hover {
@@ -1668,8 +1508,7 @@ onUnmounted(() => {
     font-size: 28px;
   }
   
-  .system-info-card,
-  .network-card {
+  .system-info-list-card {
     height: auto;
     min-height: 280px;
   }

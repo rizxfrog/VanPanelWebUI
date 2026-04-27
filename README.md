@@ -143,14 +143,6 @@ pnpm run build
 
 本项目使用 [MIT 许可证](./LICENSE)，详情请查看 LICENSE 文件。
 
-## 联系方式
-
-如果有任何问题或建议，欢迎通过以下方式联系我：
-
-- Email: [wzijian62@gmail.com](mailto:wzijian62@gmail.com)
-- 微信：GoSimplicity（加我后可邀请进微信群交流）
-- ![image](https://github.com/user-attachments/assets/e925e26b-82ce-4ef7-8455-859320cb2633)
-
 
 ## 致谢
 

@@ -28,6 +28,7 @@ go.work.sum
 __debug_bin*
 
 node_modules/
+.worktrees/
 .DS_Store
 dist
 dist-ssr

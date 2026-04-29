@@ -6,9 +6,9 @@ const routes: RouteRecordRaw[] = [
   {
     component: BasicLayout,
     meta: {
-      icon: 'lucide:folder-cog',
+      icon: 'lucide:server',
       order: 5,
-      title: '文件管理',
+      title: '系统',
     },
     name: 'FileOperations',
     path: '/files',

@@ -11,11 +11,11 @@ const routes: RouteRecordRaw[] = [
       title: '系统',
     },
     name: 'FileOperations',
-    path: '/files',
+    path: '/system',
     children: [
       {
         name: 'FileManager',
-        path: '/files/manager',
+        path: '/system/files',
         component: () => import('#/views/files/FileManager.vue'),
         meta: {
           icon: 'lucide:folder-tree',

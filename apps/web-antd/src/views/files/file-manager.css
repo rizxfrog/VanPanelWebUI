@@ -41,6 +41,25 @@
   background: #f8fafc;
 }
 
+.file-root-item .ant-list-item-meta {
+  min-width: 0;
+}
+
+.file-root-item .ant-list-item-meta-title,
+.file-root-item .ant-list-item-meta-description {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-icon-dir {
+  color: #faad14;
+}
+
+.file-icon-file {
+  color: #595959;
+}
+
 .file-manager-toolbar {
   display: flex;
   flex-wrap: wrap;

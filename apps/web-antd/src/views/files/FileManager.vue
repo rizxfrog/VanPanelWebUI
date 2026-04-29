@@ -68,6 +68,11 @@
                 type="link"
                 @click="record.is_dir ? openPath(record.path) : previewFile(record)"
               >
+                <component
+                  :is="record.is_dir ? FolderOutlined : FileOutlined"
+                  :class="record.is_dir ? 'file-icon-dir' : 'file-icon-file'"
+                  style="margin-right: 6px;"
+                />
                 {{ record.name }}
               </a-button>
             </template>
@@ -118,6 +123,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { FileOutlined, FolderOutlined } from '@ant-design/icons-vue';
 
 import type { TablePaginationConfig } from 'ant-design-vue';
 import { message, Modal } from 'ant-design-vue';

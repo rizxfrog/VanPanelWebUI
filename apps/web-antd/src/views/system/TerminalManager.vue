@@ -47,6 +47,7 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { message } from 'ant-design-vue';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
@@ -84,7 +85,10 @@ const quickCommand = ref('');
 const sessions = ref<TerminalSession[]>([]);
 const terminalRefs = new Map<string, HTMLElement>();
 
-function bindTerminalRef(clientId: string, el: Element | null) {
+function bindTerminalRef(
+  clientId: string,
+  el: ComponentPublicInstance | Element | null,
+) {
   if (el instanceof HTMLElement) {
     terminalRefs.set(clientId, el);
   }

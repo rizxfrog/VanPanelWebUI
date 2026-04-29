@@ -307,7 +307,7 @@
                   class="status-badge clickable"
                 />
                 <template #overlay>
-                  <a-menu @click="({key}: {key: string}) => handleUpdateStatus(record, Number(key))">
+                  <a-menu @click="(e: any) => handleUpdateStatus(record, Number(e.key))">
                     <a-menu-item :key="CloudResourceStatus.RUNNING" :disabled="record.status === CloudResourceStatus.RUNNING">
                       <check-circle-outlined /> 运行中
                     </a-menu-item>

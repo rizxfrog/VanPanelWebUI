@@ -178,7 +178,7 @@ async function loadRoots() {
   const res = await getFileRootsApi();
   roots.value = res.roots;
   if (!currentPath.value && roots.value.length > 0) {
-    currentPath.value = roots.value[0].path;
+    currentPath.value = roots.value[0]?.path ?? '';
   }
 }
 

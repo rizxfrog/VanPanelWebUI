@@ -10,7 +10,6 @@ import {
   type YamlTemplateUpdateReq,
   type YamlTemplateCheckReq,
   type YamlTemplateDeleteReq,
-  type YamlTemplateDetailReq,
   getYamlTemplateList,
   createYamlTemplate,
   updateYamlTemplate,

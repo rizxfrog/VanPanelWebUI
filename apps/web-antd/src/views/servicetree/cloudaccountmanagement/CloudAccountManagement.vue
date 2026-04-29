@@ -606,7 +606,6 @@ const {
   getInitials,
   formatDateTime,
   truncateText,
-  fetchCloudAccounts,
   handleTableChange,
   handleSearch,
   handleSearchChange,
@@ -620,8 +619,6 @@ const {
   handleVerify,
   handleViewDetail,
   handleExportMenuClick,
-  exportToExcel,
-  exportAllToExcel,
 } = useCloudAccountManagement();
 </script>
 

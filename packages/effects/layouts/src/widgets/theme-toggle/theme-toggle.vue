@@ -6,15 +6,12 @@ import { $t } from '@vben/locales';
 import {
   preferences,
   updatePreferences,
-  usePreferences,
 } from '@vben/preferences';
 import {
   ToggleGroup,
   ToggleGroupItem,
   VbenTooltip,
 } from '@vben-core/shadcn-ui';
-
-import ThemeButton from './theme-button.vue';
 
 defineOptions({
   name: 'ThemeToggle',
@@ -23,14 +20,6 @@ defineOptions({
 withDefaults(defineProps<{ shouldOnHover?: boolean }>(), {
   shouldOnHover: false,
 });
-
-function handleChange(isDark: boolean) {
-  updatePreferences({
-    theme: { mode: isDark ? 'dark' : 'light' },
-  });
-}
-
-const { isDark } = usePreferences();
 
 const PRESETS = [
   {

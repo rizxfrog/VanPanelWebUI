@@ -596,7 +596,7 @@
 import { onMounted } from 'vue';
 import { message } from 'ant-design-vue';
 import { useTaskPage } from './Task';
-import { formatDateTime, getRelativeTime, formatK8sTime } from '../shared/utils';
+import { formatDateTime, getRelativeTime } from '../shared/utils';
 import { 
   PlusOutlined, 
   ReloadOutlined, 
@@ -612,7 +612,6 @@ import {
 
 const {
   // state
-  tasks,
   templates,
   clusters,
   loading,

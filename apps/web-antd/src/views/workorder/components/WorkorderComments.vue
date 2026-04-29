@@ -308,7 +308,7 @@ interface Props {
   instance?: WorkorderInstanceItem
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   instance: undefined
 })
 

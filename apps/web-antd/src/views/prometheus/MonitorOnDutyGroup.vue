@@ -852,9 +852,7 @@ import {
   type MonitorOnDutyHistory,
   type MonitorOnDutyChange,
   type CreateMonitorOnDutyGroupChangeReq,
-  type GetMonitorOnDutyHistoryReq,
   type GetMonitorOnDutyGroupListReq,
-  type GetMonitorOnDutyGroupChangeListReq,
 } from '#/api/core/prometheus/prometheus_onduty';
 import dayjs, { type Dayjs } from 'dayjs';
 import { getUserList, type GetUserListReq } from '#/api/core/system/user';
@@ -862,12 +860,6 @@ import { getUserList, type GetUserListReq } from '#/api/core/system/user';
 const router = useRouter();
 
 // 用户接口类型
-interface User {
-  id: number;
-  username: string;
-  real_name?: string;
-}
-
 // 响应式对话框宽度
 const formDialogWidth = computed(() => {
   if (typeof window !== 'undefined') {
@@ -1196,6 +1188,7 @@ const getPlanTimelineColor = (date: string, index: number): string => {
 const getHistoryTimelineColor = (index: number): string => {
   return index % 2 === 0 ? 'blue' : 'green';
 };
+void getHistoryTimelineColor;
 
 const getCycleDay = (index: number): number => {
   return (index % futurePlanDialog.shiftDays) + 1;
@@ -1208,6 +1201,7 @@ const filterOption = (input: string, option: any) => {
 const filterUserOption = (input: string, option: any) => {
   return option.label.toLowerCase().indexOf(input.toLowerCase()) >= 0;
 };
+void filterUserOption;
 
 // 更新统计数据
 const updateStats = (): void => {
@@ -1408,6 +1402,7 @@ const fetchFuturePlan = async (id: number): Promise<void> => {
     futurePlanDialog.loading = false;
   }
 };
+void fetchFuturePlan;
 
 // 获取值班历史
 const fetchOnDutyHistory = async (id: number, startDate?: string, endDate?: string, page = 1, append = false): Promise<void> => {
@@ -1463,12 +1458,6 @@ const fetchOnDutyHistory = async (id: number, startDate?: string, endDate?: stri
 const fetchChangeRecords = async (page = 1, append = false): Promise<void> => {
   try {
     changeDialog.loading = true;
-    const params: GetMonitorOnDutyGroupChangeListReq = {
-      on_duty_group_id: changeDialog.groupId,
-      page,
-      size: changePaginationConfig.pageSize
-    };
-
     const response = await getMonitorOnDutyGroupChangeListApi(changeDialog.groupId, {
       page,
       size: changePaginationConfig.pageSize
@@ -1685,6 +1674,7 @@ const handleHistoryTableChange = (pagination: any): void => {
   const endDate = historyDateRange.value ? historyDateRange.value[1].format('YYYY-MM-DD') : undefined;
   fetchOnDutyHistory(historyDialog.groupId, startDate, endDate, pagination.current);
 };
+void handleHistoryTableChange;
 
 // 处理历史分页页码变化
 const handleHistoryPageChange = (page: number): void => {
@@ -1986,6 +1976,7 @@ const loadMoreHistoryRecords = async (): Promise<void> => {
     await fetchOnDutyHistory(historyDialog.groupId, startDate, endDate, nextPage, true);
   }
 };
+void loadMoreHistoryRecords;
 
 const handleCreatePlanFromDialog = (): void => {
   router.push({

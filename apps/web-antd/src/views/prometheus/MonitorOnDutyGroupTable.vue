@@ -381,7 +381,6 @@ import {
   type MonitorOnDutyHistory,
   type MonitorOnDutyGroup,
   type CreateMonitorOnDutyGroupChangeReq,
-  type GetMonitorOnDutyHistoryReq,
 } from '#/api/core/prometheus/prometheus_onduty';
 
 // Define User type locally
@@ -416,6 +415,7 @@ interface FuturePlanResponse {
   data?: DutyPlanDetail[];
   list?: DutyPlanDetail[];
 }
+void ({} as FuturePlanResponse);
 
 const route = useRoute();
 const router = useRouter();

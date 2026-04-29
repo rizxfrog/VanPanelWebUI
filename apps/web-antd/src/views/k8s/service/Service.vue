@@ -1219,11 +1219,9 @@ const {
   
   // operations
   fetchClusters,
-  fetchNamespaces,
   fetchServices,
   clearServices,
   clearNamespaces,
-  loadMoreClusters,
   loadMoreNamespaces,
   
   // detail operations

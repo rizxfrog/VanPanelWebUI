@@ -175,18 +175,18 @@ const headerSlots = computed(() => {
     @side-mouse-leave="handleSideMouseLeave"
     @toggle-sidebar="toggleSidebar"
     @update:sidebar-collapse="
-      (value: boolean) => updatePreferences({ sidebar: { collapsed: value } })
+      (value: boolean | undefined) => updatePreferences({ sidebar: { collapsed: !!value } })
     "
     @update:sidebar-enable="
-      (value: boolean) => updatePreferences({ sidebar: { enable: value } })
+      (value: boolean | undefined) => updatePreferences({ sidebar: { enable: !!value } })
     "
     @update:sidebar-expand-on-hover="
-      (value: boolean) =>
-        updatePreferences({ sidebar: { expandOnHover: value } })
+      (value: boolean | undefined) =>
+        updatePreferences({ sidebar: { expandOnHover: !!value } })
     "
     @update:sidebar-extra-collapse="
-      (value: boolean) =>
-        updatePreferences({ sidebar: { extraCollapse: value } })
+      (value: boolean | undefined) =>
+        updatePreferences({ sidebar: { extraCollapse: !!value } })
     "
   >
     <!-- logo -->

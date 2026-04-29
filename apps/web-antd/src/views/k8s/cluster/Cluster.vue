@@ -741,7 +741,6 @@ import {
   EditOutlined, 
   DeploymentUnitOutlined,
   EyeOutlined,
-  FileTextOutlined,
   CopyOutlined,
   DownloadOutlined,
   SearchOutlined,
@@ -775,7 +774,6 @@ const {
   submitForm,
   confirmDelete,
   batchDelete,
-  refreshCluster,
   Env,
   ClusterStatus,
   addTag,
@@ -790,7 +788,6 @@ const {
   isKubeConfigModalVisible,
   kubeConfigLoading,
   currentKubeConfigCluster,
-  showKubeConfigModal,
   closeKubeConfigModal,
   copyKubeConfig,
   downloadKubeConfig,
@@ -804,7 +801,6 @@ const {
   onSearchInput,
   total,
   // kubeconfig preview
-  getKubeConfigPreview,
 } = useClusterPage();
 
 const handleFilterChange = () => {
@@ -842,4 +838,3 @@ onMounted(async () => {
 </style>
 
 <style scoped src="./Cluster.css"></style>
-

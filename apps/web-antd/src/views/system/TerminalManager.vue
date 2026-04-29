@@ -34,10 +34,12 @@
         :key="session.clientId"
         :tab="session.title"
       >
-        <div
-          :ref="(el) => bindTerminalRef(session.clientId, el)"
-          class="terminal-screen"
-        ></div>
+        <div class="terminal-screen">
+          <div
+            :ref="(el) => bindTerminalRef(session.clientId, el)"
+            class="terminal-screen-inner"
+          ></div>
+        </div>
       </a-tab-pane>
     </a-tabs>
 
@@ -46,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { ComponentPublicInstance } from 'vue';
 import { message } from 'ant-design-vue';
 import { Terminal } from 'xterm';
@@ -96,6 +98,27 @@ function bindTerminalRef(
 
 function currentSession() {
   return sessions.value.find((item) => item.clientId === activeClientId.value);
+}
+
+function fitAndScroll(session: TerminalSession, notifyServer = false) {
+  requestAnimationFrame(() => {
+    session.fitAddon.fit();
+    session.terminal.scrollToBottom();
+    if (
+      notifyServer &&
+      session.serverSessionId &&
+      session.socket.readyState === WebSocket.OPEN
+    ) {
+      session.socket.send(
+        encodeTerminalMessage({
+          cols: session.terminal.cols,
+          rows: session.terminal.rows,
+          sessionId: session.serverSessionId,
+          type: 'resize',
+        }),
+      );
+    }
+  });
 }
 
 async function loadTargets() {
@@ -155,7 +178,7 @@ async function openSession() {
   const element = terminalRefs.get(clientId);
   if (element) {
     terminal.open(element);
-    fitAddon.fit();
+    fitAndScroll(session);
   }
 
   socket.onopen = () => {
@@ -175,11 +198,13 @@ async function openSession() {
     if (msg.type === 'connected') {
       session.serverSessionId = msg.sessionId;
       session.title = msg.targetName;
+      fitAndScroll(session, true);
       terminal.focus();
       return;
     }
     if (msg.type === 'output') {
       terminal.write(msg.data);
+      fitAndScroll(session);
       return;
     }
     if (msg.type === 'error') {
@@ -269,21 +294,10 @@ function handleTabEdit(targetKey: string | MouseEvent, action: 'add' | 'remove')
 
 function resizeActive() {
   const session = currentSession();
-  if (
-    !session?.serverSessionId ||
-    session.socket.readyState !== WebSocket.OPEN
-  ) {
+  if (!session) {
     return;
   }
-  session.fitAddon.fit();
-  session.socket.send(
-    encodeTerminalMessage({
-      cols: session.terminal.cols,
-      rows: session.terminal.rows,
-      sessionId: session.serverSessionId,
-      type: 'resize',
-    }),
-  );
+  fitAndScroll(session, true);
 }
 
 onMounted(() => {
@@ -295,6 +309,13 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeActive);
   for (const session of [...sessions.value]) {
     closeSession(session.clientId);
+  }
+});
+
+watch(activeClientId, () => {
+  const session = currentSession();
+  if (session) {
+    fitAndScroll(session, true);
   }
 });
 </script>

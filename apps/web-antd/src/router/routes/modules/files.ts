@@ -22,6 +22,15 @@ const routes: RouteRecordRaw[] = [
           title: '文件管理',
         },
       },
+      {
+        name: 'SystemTerminal',
+        path: '/system/terminal',
+        component: () => import('#/views/system/TerminalManager.vue'),
+        meta: {
+          icon: 'lucide:terminal',
+          title: '终端',
+        },
+      },
     ],
   },
 ];

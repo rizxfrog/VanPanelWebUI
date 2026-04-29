@@ -1,0 +1,35 @@
+.terminal-page {
+  min-height: calc(100vh - 120px);
+  padding: 18px;
+  background:
+    radial-gradient(circle at top left, rgb(44 120 115 / 20%), transparent 32rem),
+    linear-gradient(135deg, #101820 0%, #17212b 100%);
+}
+
+.terminal-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.terminal-target-select {
+  width: 280px;
+}
+
+.terminal-command {
+  max-width: 420px;
+}
+
+.terminal-screen {
+  height: calc(100vh - 260px);
+  min-height: 420px;
+  padding: 12px;
+  overflow: hidden;
+  background: #05070a;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 14px;
+}
+
+.terminal-screen .xterm {
+  height: 100%;
+}

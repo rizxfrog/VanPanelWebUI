@@ -31,6 +31,15 @@ const routes: RouteRecordRaw[] = [
           title: '终端',
         },
       },
+      {
+        name: 'SystemContainers',
+        path: '/system/containers',
+        component: () => import('#/views/system/ContainerManager.vue'),
+        meta: {
+          icon: 'lucide:container',
+          title: '容器管理',
+        },
+      },
     ],
   },
 ];

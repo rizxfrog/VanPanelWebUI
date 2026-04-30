@@ -126,7 +126,7 @@ export async function getContainerStats(id: string) {
 }
 
 export async function getContainerLogs(id: string, tail = '200') {
-  const response = await baseRequestClient.get<string>(
+  const response = await baseRequestClient.get<any>(
     `/system/containers/${id}/logs`,
     {
       headers: authHeaders(),
@@ -134,5 +134,5 @@ export async function getContainerLogs(id: string, tail = '200') {
       responseType: 'text',
     },
   );
-  return response.data;
+  return typeof response === 'string' ? response : response.data;
 }

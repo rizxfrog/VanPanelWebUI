@@ -40,6 +40,15 @@ const routes: RouteRecordRaw[] = [
           title: '容器管理',
         },
       },
+      {
+        name: 'SystemAgent',
+        path: '/system/agent',
+        component: () => import('#/views/system/AgentAssistant.vue'),
+        meta: {
+          icon: 'lucide:bot',
+          title: '智能助手',
+        },
+      },
     ],
   },
 ];

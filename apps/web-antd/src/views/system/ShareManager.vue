@@ -42,9 +42,16 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'share_code'">
-          <a-button type="link" size="small" @click="copyShareLink(record.share_code)">
+          <a-button type="link" size="small" @click="copyShareLink(record.share_code, record.access_code)">
             {{ record.share_code }}
           </a-button>
+        </template>
+        <template v-else-if="column.key === 'access_code'">
+          <a-tooltip title="点击复制">
+            <a-tag color="orange" style="cursor: pointer" @click="copyAccessCode(record.access_code)">
+              {{ record.access_code }}
+            </a-tag>
+          </a-tooltip>
         </template>
         <template v-else-if="column.key === 'access_level'">
           <a-tag :color="record.access_level === 'public' ? 'green' : 'blue'">
@@ -61,7 +68,7 @@
         </template>
         <template v-else-if="column.key === 'action'">
           <a-space>
-            <a-button size="small" @click="copyShareLink(record.share_code)">
+            <a-button size="small" @click="copyShareLink(record.share_code, record.access_code)">
               复制链接
             </a-button>
             <a-button size="small" @click="showEditDialog(record)">
@@ -155,6 +162,7 @@ const editForm = ref({
 
 const columns = [
   { dataIndex: 'share_code', key: 'share_code', title: '分享码' },
+  { dataIndex: 'access_code', key: 'access_code', title: '提取码' },
   { dataIndex: 'access_level', key: 'access_level', title: '访问级别' },
   { dataIndex: 'download_count', key: 'download_count', title: '下载次数' },
   { dataIndex: 'max_downloads', key: 'max_downloads', title: '最大下载' },
@@ -225,10 +233,15 @@ async function loadShares() {
   }
 }
 
-function copyShareLink(shareCode: string) {
-  const link = `${window.location.origin}/share/${shareCode}`;
+function copyShareLink(shareCode: string, accessCode: string) {
+  const link = `${window.location.origin}/share/${shareCode}?passwd=${accessCode}`;
   navigator.clipboard.writeText(link);
-  message.success('分享链接已复制到剪贴板');
+  message.success('分享链接已复制到剪贴板（含提取码）');
+}
+
+function copyAccessCode(accessCode: string) {
+  navigator.clipboard.writeText(accessCode);
+  message.success('提取码已复制到剪贴板');
 }
 
 function showEditDialog(record: FileShare) {

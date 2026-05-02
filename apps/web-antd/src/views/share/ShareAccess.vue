@@ -209,8 +209,19 @@ function retryLoad() {
   loadShareInfo();
 }
 
-onMounted(() => {
-  loadShareInfo();
+onMounted(async () => {
+  // 从 URL 参数中读取提取码并自动填充
+  const passwd = route.query.passwd as string;
+  if (passwd) {
+    accessCode.value = passwd;
+  }
+
+  await loadShareInfo();
+
+  // 如果有 passwd 参数，自动验证
+  if (passwd) {
+    await verifyAccess();
+  }
 });
 </script>
 

@@ -437,7 +437,7 @@ async function createShare() {
     });
 
     shareResult.value = {
-      link: `${window.location.origin}/share/${result.share_code}`,
+      link: `${window.location.origin}/share/${result.share_code}?passwd=${result.access_code}`,
       access_code: result.access_code,
     };
 

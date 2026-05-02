@@ -60,16 +60,6 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
-  {
-    path: '/share/:code',
-    name: 'ShareAccess',
-    component: () => import('#/views/share/ShareAccess.vue'),
-    meta: {
-      title: '文件分享',
-      hideInMenu: true,
-      hideInBreadcrumb: true,
-    },
-  },
 ];
 
 export default routes;

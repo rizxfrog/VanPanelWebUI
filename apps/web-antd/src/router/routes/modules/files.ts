@@ -23,6 +23,15 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'SystemShares',
+        path: '/system/shares',
+        component: () => import('#/views/system/ShareManager.vue'),
+        meta: {
+          icon: 'lucide:share-2',
+          title: '分享管理',
+        },
+      },
+      {
         name: 'SystemTerminal',
         path: '/system/terminal',
         component: () => import('#/views/system/TerminalManager.vue'),
@@ -50,6 +59,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
     ],
+  },
+  {
+    path: '/share/:code',
+    name: 'ShareAccess',
+    component: () => import('#/views/share/ShareAccess.vue'),
+    meta: {
+      title: '文件分享',
+      hideInMenu: true,
+      hideInBreadcrumb: true,
+    },
   },
 ];
 

@@ -24,9 +24,6 @@
             :class="['agent-assistant__message', `is-${item.role}`]"
           >
             <div class="agent-assistant__bubble">
-              <div class="agent-assistant__role">
-                {{ item.role === 'user' ? '你' : 'Agent' }}
-              </div>
               <div class="agent-assistant__content">{{ item.content }}</div>
             </div>
           </div>

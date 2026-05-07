@@ -23,12 +23,39 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'SystemShares',
+        path: '/system/shares',
+        component: () => import('#/views/system/ShareManager.vue'),
+        meta: {
+          icon: 'lucide:share-2',
+          title: '分享管理',
+        },
+      },
+      {
         name: 'SystemTerminal',
         path: '/system/terminal',
         component: () => import('#/views/system/TerminalManager.vue'),
         meta: {
           icon: 'lucide:terminal',
           title: '终端',
+        },
+      },
+      {
+        name: 'SystemContainers',
+        path: '/system/containers',
+        component: () => import('#/views/system/ContainerManager.vue'),
+        meta: {
+          icon: 'lucide:container',
+          title: '容器管理',
+        },
+      },
+      {
+        name: 'SystemAgent',
+        path: '/system/agent',
+        component: () => import('#/views/system/AgentAssistant.vue'),
+        meta: {
+          icon: 'lucide:bot',
+          title: '智能助手',
         },
       },
     ],

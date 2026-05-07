@@ -47,6 +47,13 @@
           <a-button danger :disabled="!selectedRowKeys.length" @click="confirmDelete">
             删除
           </a-button>
+          <a-button
+            type="primary"
+            :disabled="!selectedRowKeys.length"
+            @click="openShareDialog"
+          >
+            分享
+          </a-button>
         </div>
 
         <a-breadcrumb class="file-manager-breadcrumb">
@@ -95,6 +102,12 @@
                 >
                   下载
                 </a-button>
+                <a-button
+                  size="small"
+                  @click="shareSingleFile(record)"
+                >
+                  分享
+                </a-button>
               </a-space>
             </template>
           </template>
@@ -118,6 +131,79 @@
         </a-button>
       </template>
     </a-drawer>
+
+    <!-- 分享对话框 -->
+    <a-modal
+      v-model:open="shareDialogVisible"
+      title="创建分享链接"
+      @ok="createShare"
+      @cancel="closeShareDialog"
+    >
+      <a-form :model="shareForm" layout="vertical">
+        <a-form-item label="访问级别">
+          <a-select v-model:value="shareForm.access_level">
+            <a-select-option value="public">公开访问</a-select-option>
+            <a-select-option value="login_required">需要登录</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="最大下载次数">
+          <a-input-number v-model:value="shareForm.max_downloads" :min="0" style="width: 100%" />
+          <div class="form-tip">0 表示无限制</div>
+        </a-form-item>
+        <a-form-item label="过期时间">
+          <a-select v-model:value="shareForm.expire_type" style="width: 100%">
+            <a-select-option value="never">永久有效</a-select-option>
+            <a-select-option value="1day">1天</a-select-option>
+            <a-select-option value="7days">7天</a-select-option>
+            <a-select-option value="30days">30天</a-select-option>
+            <a-select-option value="custom">自定义</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item v-if="shareForm.expire_type === 'custom'" label="自定义过期时间">
+          <a-date-picker
+            v-model:value="shareForm.expire_at"
+            show-time
+            style="width: 100%"
+            :disabled-date="disabledDate"
+          />
+        </a-form-item>
+        <a-form-item label="分享文件">
+          <a-list :data-source="shareForm.items" size="small" bordered>
+            <template #renderItem="{ item }">
+              <a-list-item>
+                <a-list-item-meta :title="item.file_name" :description="item.file_path" />
+              </a-list-item>
+            </template>
+          </a-list>
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 分享结果对话框 -->
+    <a-modal
+      v-model:open="shareResultVisible"
+      title="分享创建成功"
+      :footer="null"
+    >
+      <a-result status="success" title="分享链接已创建">
+        <template #extra>
+          <a-descriptions :column="1" bordered>
+            <a-descriptions-item label="分享链接">
+              <a-input :value="shareResult.link" readonly>
+                <template #suffix>
+                  <a-button type="link" size="small" @click="copyShareLink">
+                    复制
+                  </a-button>
+                </template>
+              </a-input>
+            </a-descriptions-item>
+            <a-descriptions-item label="提取码">
+              <a-tag color="blue">{{ shareResult.access_code }}</a-tag>
+            </a-descriptions-item>
+          </a-descriptions>
+        </template>
+      </a-result>
+    </a-modal>
   </div>
 </template>
 
@@ -138,6 +224,8 @@ import {
   listFilesApi,
   saveFileContentApi,
 } from '#/api/core/files/files';
+import { createShareApi } from '#/api/core/files/file-share';
+import dayjs from 'dayjs';
 
 import { canEditFile, formatFileSize, joinPath } from './file-manager-utils';
 import './file-manager.css';
@@ -156,6 +244,20 @@ const total = ref(0);
 const drawerOpen = ref(false);
 const activeFile = ref<FileInfo | null>(null);
 const editorContent = ref('');
+
+const shareDialogVisible = ref(false);
+const shareResultVisible = ref(false);
+const shareForm = ref({
+  access_level: 'public' as 'public' | 'login_required',
+  max_downloads: 0,
+  expire_type: 'never' as 'never' | '1day' | '7days' | '30days' | 'custom',
+  expire_at: null as any,
+  items: [] as Array<{ file_path: string; file_type: 'file' | 'directory'; file_name: string }>,
+});
+const shareResult = ref({
+  link: '',
+  access_code: '',
+});
 
 const columns = [
   { dataIndex: 'name', key: 'name', sorter: true, title: '名称' },
@@ -266,6 +368,90 @@ function confirmDelete() {
     content: '第一版会直接删除，不进入回收站。',
     title: '确认删除选中文件？',
   });
+}
+
+function disabledDate(current: any) {
+  return current && current < dayjs().startOf('day');
+}
+
+function openShareDialog() {
+  const items = selectedRowKeys.value.map(path => {
+    const file = files.value.find(f => f.path === path);
+    return {
+      file_path: path,
+      file_type: file?.is_dir ? 'directory' as const : 'file' as const,
+      file_name: file?.name || path.split('/').pop() || '',
+    };
+  });
+
+  shareForm.value = {
+    access_level: 'public',
+    max_downloads: 0,
+    expire_type: 'never',
+    expire_at: null,
+    items,
+  };
+
+  shareDialogVisible.value = true;
+}
+
+function shareSingleFile(file: FileInfo) {
+  shareForm.value = {
+    access_level: 'public',
+    max_downloads: 0,
+    expire_type: 'never',
+    expire_at: null,
+    items: [{
+      file_path: file.path,
+      file_type: file.is_dir ? 'directory' as const : 'file' as const,
+      file_name: file.name,
+    }],
+  };
+
+  shareDialogVisible.value = true;
+}
+
+function closeShareDialog() {
+  shareDialogVisible.value = false;
+}
+
+async function createShare() {
+  let expireAt = null;
+
+  if (shareForm.value.expire_type === '1day') {
+    expireAt = dayjs().add(1, 'day').toISOString();
+  } else if (shareForm.value.expire_type === '7days') {
+    expireAt = dayjs().add(7, 'day').toISOString();
+  } else if (shareForm.value.expire_type === '30days') {
+    expireAt = dayjs().add(30, 'day').toISOString();
+  } else if (shareForm.value.expire_type === 'custom' && shareForm.value.expire_at) {
+    expireAt = shareForm.value.expire_at.toISOString();
+  }
+
+  try {
+    const result = await createShareApi({
+      access_level: shareForm.value.access_level,
+      max_downloads: shareForm.value.max_downloads,
+      expire_at: expireAt,
+      items: shareForm.value.items,
+    });
+
+    shareResult.value = {
+      link: `${window.location.origin}/share/${result.share_code}?passwd=${result.access_code}`,
+      access_code: result.access_code,
+    };
+
+    shareDialogVisible.value = false;
+    shareResultVisible.value = true;
+    selectedRowKeys.value = [];
+  } catch (error) {
+    message.error('创建分享失败');
+  }
+}
+
+function copyShareLink() {
+  navigator.clipboard.writeText(shareResult.value.link);
+  message.success('分享链接已复制到剪贴板');
 }
 
 onMounted(async () => {

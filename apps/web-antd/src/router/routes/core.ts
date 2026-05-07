@@ -30,6 +30,18 @@ const coreRoutes: RouteRecordRaw[] = [
     redirect: DEFAULT_HOME_PATH,
   },
   {
+    component: () => import('#/views/share/ShareAccess.vue'),
+    meta: {
+      hideInBreadcrumb: true,
+      hideInMenu: true,
+      hideInTab: true,
+      ignoreAccess: true,
+      title: '文件分享',
+    },
+    name: 'ShareAccess',
+    path: '/share/:code',
+  },
+  {
     component: AuthPageLayout,
     meta: {
       title: 'Authentication',

@@ -24,6 +24,15 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        name: 'AssistantAgent',
+        path: '/assistant/agent',
+        component: () => import('#/views/system/AgentAssistant.vue'),
+        meta: {
+          icon: 'lucide:bot',
+          title: '智能助手',
+        },
+      },
+      {
         name: 'AssistantSession',
         path: '/assistant/session',
         component: () => import('#/views/assistant/AssistantSession.vue'),
@@ -48,6 +57,24 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'lucide:info',
           title: '服务信息',
+        },
+      },
+      {
+        name: 'AssistantTools',
+        path: '/assistant/tools',
+        component: () => import('#/views/assistant/AssistantTools.vue'),
+        meta: {
+          icon: 'lucide:wrench',
+          title: '工具管理',
+        },
+      },
+      {
+        name: 'AssistantHub',
+        path: '/assistant/hub',
+        component: () => import('#/views/assistant/AssistantHub.vue'),
+        meta: {
+          icon: 'lucide:store',
+          title: 'MCP Hub',
         },
       },
     ],

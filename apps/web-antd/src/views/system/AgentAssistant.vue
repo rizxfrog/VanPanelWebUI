@@ -1,20 +1,5 @@
 <template>
   <div class="agent-assistant">
-<!--    <section class="agent-assistant__hero">
-      <div>
-        <p class="agent-assistant__eyebrow">Secure AI Ops Agent</p>
-        <h1>智能运维助手</h1>
-        <p>
-          面向诊断、建议和受控执行。高风险操作会被安全护栏阻断，低风险变更需要你确认。
-        </p>
-      </div>
-      <a-space wrap>
-        <a-tag color="green">Risk Guard</a-tag>
-        <a-tag color="blue">Tool Router</a-tag>
-        <a-tag color="gold">Audit Trail</a-tag>
-      </a-space>
-    </section>-->
-
     <div class="agent-assistant__grid">
       <a-card :bordered="false" class="agent-assistant__chat">
         <div ref="scrollRef" class="agent-assistant__messages">
@@ -28,85 +13,108 @@
             </div>
           </div>
         </div>
-
-        <div class="agent-assistant__composer">
-          <a-textarea
-            v-model:value="draft"
-            :auto-size="{ minRows: 2, maxRows: 5 }"
-            placeholder="例如：帮我分析磁盘为什么满了，或者检查容器状态"
-            @press-enter="handleEnter"
-          />
-          <a-button type="primary" :loading="loading" @click="send">
-            发送
-          </a-button>
-        </div>
       </a-card>
 
       <aside class="agent-assistant__side">
         <a-card :bordered="false" title="工具能力">
+          <template #extra>
+            <a-space>
+              <a-button size="small" type="link" @click="enableAllTools">全部启用</a-button>
+              <a-button size="small" type="link" danger @click="disableAllTools">全部停用</a-button>
+            </a-space>
+          </template>
           <a-spin :spinning="toolsLoading">
-            <a-list :data-source="tools" size="small">
-              <template #renderItem="{ item }">
-                <a-list-item>
-                  <a-list-item-meta :description="item.description">
-                    <template #title>{{ item.name }}</template>
-                  </a-list-item-meta>
-                </a-list-item>
-              </template>
-            </a-list>
+            <div class="agent-assistant__tools-list">
+              <a-list :data-source="tools" size="small">
+                <template #renderItem="{ item }">
+                  <a-list-item>
+                    <a-list-item-meta :description="item.description">
+                      <template #title>
+                        <span
+                          :class="{ 'agent-assistant__tool-disabled': !toolEnabled[item.name] }">
+                          {{ item.name }}
+                        </span>
+                      </template>
+                    </a-list-item-meta>
+                    <template #actions>
+                      <a-switch
+                        :checked="toolEnabled[item.name]"
+                        size="small"
+                        @change="(val: boolean) => toggleTool(item.name, val)"
+                      />
+                    </template>
+                  </a-list-item>
+                </template>
+              </a-list>
+            </div>
           </a-spin>
         </a-card>
 
-        <a-card :bordered="false" title="最近工具调用">
-          <a-empty v-if="!toolCalls.length" description="暂无工具调用" />
-          <a-timeline v-else>
-            <a-timeline-item
-              v-for="call in toolCalls"
-              :key="call.id"
-              :color="callColor(call.status)"
-            >
-              <div class="agent-assistant__tool-name">{{ call.name }}</div>
-              <div class="agent-assistant__muted">{{ call.status }}</div>
-              <pre v-if="call.error">{{ call.error }}</pre>
-            </a-timeline-item>
-          </a-timeline>
-        </a-card>
-
-        <a-card :bordered="false" title="待确认操作">
-          <a-empty v-if="!approvals.length" description="暂无待确认操作" />
-          <div
-            v-for="approval in approvals"
-            :key="approval.id"
-            class="agent-assistant__approval"
-          >
-            <div class="agent-assistant__tool-name">
-              {{ approval.toolCall.name }}
-            </div>
-            <div class="agent-assistant__muted">
-              {{ JSON.stringify(approval.toolCall.args || {}) }}
-            </div>
-            <a-space>
-              <a-button
-                size="small"
-                type="primary"
-                @click="confirmApproval(approval.id)"
+        <a-card :bordered="false" class="agent-assistant__tool-activity">
+          <a-tabs v-model:activeKey="activityTab" size="small">
+            <a-tab-pane key="calls" tab="最近工具调用">
+              <a-empty v-if="!toolCalls.length" description="暂无工具调用"/>
+              <a-timeline v-else>
+                <a-timeline-item
+                  v-for="call in toolCalls"
+                  :key="call.id"
+                  :color="callColor(call.status)"
+                >
+                  <div class="agent-assistant__tool-name">{{ call.name }}</div>
+                  <div class="agent-assistant__muted">{{ call.status }}</div>
+                  <pre v-if="call.error">{{ call.error }}</pre>
+                </a-timeline-item>
+              </a-timeline>
+            </a-tab-pane>
+            <a-tab-pane key="approvals" tab="待确认操作">
+              <a-empty v-if="!approvals.length" description="暂无待确认操作"/>
+              <div
+                v-for="approval in approvals"
+                :key="approval.id"
+                class="agent-assistant__approval"
               >
-                确认执行
-              </a-button>
-              <a-button size="small" @click="rejectApproval(approval.id)">
-                拒绝
-              </a-button>
-            </a-space>
-          </div>
+                <div class="agent-assistant__tool-name">
+                  {{ approval.toolCall.name }}
+                </div>
+                <div class="agent-assistant__muted">
+                  {{ JSON.stringify(approval.toolCall.args || {}) }}
+                </div>
+                <a-space>
+                  <a-button
+                    size="small"
+                    type="primary"
+                    @click="confirmApproval(approval.id)"
+                  >
+                    确认执行
+                  </a-button>
+                  <a-button size="small" @click="rejectApproval(approval.id)">
+                    拒绝
+                  </a-button>
+                </a-space>
+              </div>
+            </a-tab-pane>
+          </a-tabs>
         </a-card>
       </aside>
+    </div>
+
+    <div class="agent-assistant__composer">
+      <a-textarea
+        v-model:value="draft"
+        :auto-size="{ minRows: 2, maxRows: 5 }"
+        placeholder="例如：帮我分析磁盘为什么满了，或者检查容器状态"
+        @press-enter="handleEnter"
+      />
+      <a-button type="primary" :loading="loading" @click="send">
+        发送
+      </a-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue';
-import { message } from 'ant-design-vue';
+import {nextTick, onMounted, reactive, ref} from 'vue';
+import {message} from 'ant-design-vue';
 
 import {
   confirmAgentApproval,
@@ -131,21 +139,22 @@ const loading = ref(false);
 const toolsLoading = ref(false);
 const sessionId = ref<string>();
 const scrollRef = ref<HTMLElement>();
+const activityTab = ref('calls');
 const tools = ref<AgentTool[]>([]);
+const toolEnabled = reactive<Record<string, boolean>>({});
 const toolCalls = ref<AgentToolCall[]>([]);
 const approvals = ref<AgentApproval[]>([]);
-const messages = ref<ChatMessage[]>([
-  {
-    id: 'welcome',
-    role: 'assistant',
-    content: '请描述你要诊断的问题。我会先给出只读诊断和建议，涉及变更时会要求确认。',
-  },
-]);
+const messages = ref<ChatMessage[]>([]);
 
 async function loadTools() {
   toolsLoading.value = true;
   try {
     tools.value = await getAgentTools();
+    for (const tool of tools.value) {
+      if (!(tool.name in toolEnabled)) {
+        toolEnabled[tool.name] = true;
+      }
+    }
   } catch (error: any) {
     message.error(error?.message || '加载 Agent 工具失败');
   } finally {
@@ -157,7 +166,7 @@ async function send() {
   const text = draft.value.trim();
   if (!text || loading.value) return;
 
-  messages.value.push({ id: crypto.randomUUID(), role: 'user', content: text });
+  messages.value.push({id: crypto.randomUUID(), role: 'user', content: text});
   draft.value = '';
   loading.value = true;
   await scrollToBottom();
@@ -249,6 +258,22 @@ async function scrollToBottom() {
   await nextTick();
   if (scrollRef.value) {
     scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+  }
+}
+
+function toggleTool(name: string, enabled: boolean) {
+  toolEnabled[name] = enabled;
+}
+
+function enableAllTools() {
+  for (const tool of tools.value) {
+    toolEnabled[tool.name] = true;
+  }
+}
+
+function disableAllTools() {
+  for (const tool of tools.value) {
+    toolEnabled[tool.name] = false;
   }
 }
 

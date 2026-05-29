@@ -32,6 +32,8 @@ async function loadPlugins() {
       category: categoryFilter.value || undefined,
     });
     plugins.value = res.data?.items || res.data || [];
+  } catch {
+    plugins.value = [];
   } finally {
     loading.value = false;
   }
@@ -47,8 +49,12 @@ function handleCategoryChange() {
 }
 
 async function handleInstall(id: number) {
-  await installPlugin(id);
-  message.success('安装成功');
+  try {
+    await installPlugin(id);
+    message.success('安装成功');
+  } catch (e: any) {
+    message.error(e?.message || '安装失败');
+  }
 }
 
 function beforeUpload(file: File) {
@@ -66,12 +72,16 @@ async function handleUpload() {
   if (uploadFile.value) {
     formData.append('binary', uploadFile.value);
   }
-  await uploadPlugin(formData);
-  message.success('上传成功');
-  uploadVisible.value = false;
-  uploadManifest.value = '';
-  uploadFile.value = null;
-  loadPlugins();
+  try {
+    await uploadPlugin(formData);
+    message.success('上传成功');
+    uploadVisible.value = false;
+    uploadManifest.value = '';
+    uploadFile.value = null;
+    loadPlugins();
+  } catch (e: any) {
+    message.error(e?.message || '上传失败');
+  }
 }
 
 onMounted(loadPlugins);

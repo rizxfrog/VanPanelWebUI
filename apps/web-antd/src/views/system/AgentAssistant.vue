@@ -1,6 +1,6 @@
 <template>
   <div class="agent-assistant">
-    <section class="agent-assistant__hero">
+<!--    <section class="agent-assistant__hero">
       <div>
         <p class="agent-assistant__eyebrow">Secure AI Ops Agent</p>
         <h1>智能运维助手</h1>
@@ -13,7 +13,7 @@
         <a-tag color="blue">Tool Router</a-tag>
         <a-tag color="gold">Audit Trail</a-tag>
       </a-space>
-    </section>
+    </section>-->
 
     <div class="agent-assistant__grid">
       <a-card :bordered="false" class="agent-assistant__chat">
@@ -111,7 +111,7 @@ import { message } from 'ant-design-vue';
 import {
   confirmAgentApproval,
   getAgentTools,
-  queryAgent,
+  queryAgentStream,
   rejectAgentApproval,
   type AgentApproval,
   type AgentTool,
@@ -163,15 +163,47 @@ async function send() {
   await scrollToBottom();
 
   try {
-    const response = await queryAgent(text, sessionId.value);
-    sessionId.value = response.sessionId;
-    messages.value.push({
+    const assistantMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: 'assistant',
-      content: response.message.content,
+      content: '',
+    };
+    messages.value.push(assistantMessage);
+
+    let streamError: Error | undefined;
+    await queryAgentStream(text, sessionId.value, {
+      onStart(data) {
+        sessionId.value = data.session_id || data.sessionId || sessionId.value;
+      },
+      onDelta(content) {
+        assistantMessage.content += content;
+        void scrollToBottom();
+      },
+      onDone(data) {
+        const result = data.result || {};
+        sessionId.value =
+          data.session_id ||
+          data.sessionId ||
+          result.session_id ||
+          result.sessionId ||
+          sessionId.value;
+        if (!assistantMessage.content && result.answer) {
+          assistantMessage.content = result.answer;
+        }
+        // 如果流结束但没有任何内容，显示提示
+        if (!assistantMessage.content) {
+          assistantMessage.content = '（模型未返回内容，请检查后端日志或确认 LLM 配置是否正确）';
+        }
+        toolCalls.value = [];
+        approvals.value = [];
+      },
+      onError(error) {
+        streamError = error;
+      },
     });
-    toolCalls.value = response.toolCalls || [];
-    approvals.value = response.approvals || [];
+    if (streamError) {
+      throw streamError;
+    }
   } catch (error: any) {
     message.error(error?.message || 'Agent 请求失败');
   } finally {

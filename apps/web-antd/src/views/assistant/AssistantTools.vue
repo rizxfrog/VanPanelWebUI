@@ -30,16 +30,22 @@ async function loadBuiltinTools() {
   loading.value = true;
   try {
     const res = await listBuiltinTools();
-    builtinTools.value = res.data?.items || res.data || [];
+    builtinTools.value = Array.isArray(res) ? res : (res?.items || res?.data || []);
+  } catch {
+    builtinTools.value = [];
   } finally {
     loading.value = false;
   }
 }
 
 async function handleToggleBuiltin(name: string) {
-  await toggleBuiltinTool(name);
-  message.success('操作成功');
-  loadBuiltinTools();
+  try {
+    await toggleBuiltinTool(name);
+    message.success('操作成功');
+    loadBuiltinTools();
+  } catch (e: any) {
+    message.error(e?.message || '操作失败');
+  }
 }
 
 // ===== 远程 MCP =====
@@ -68,6 +74,8 @@ async function loadRemoteConfigs() {
   try {
     const res = await listRemoteMCPs();
     remoteConfigs.value = res.data?.items || res.data || [];
+  } catch {
+    remoteConfigs.value = [];
   } finally {
     loading.value = false;
   }
@@ -96,34 +104,50 @@ function showRemoteModal(record?: any) {
 }
 
 async function handleRemoteSubmit() {
-  if (editingRemote.value) {
-    await updateRemoteMCP(editingRemote.value.id, remoteForm);
-  } else {
-    await createRemoteMCP(remoteForm);
+  try {
+    if (editingRemote.value) {
+      await updateRemoteMCP(editingRemote.value.id, remoteForm);
+    } else {
+      await createRemoteMCP(remoteForm);
+    }
+    message.success('操作成功');
+    remoteModalVisible.value = false;
+    loadRemoteConfigs();
+  } catch (e: any) {
+    message.error(e?.message || '操作失败');
   }
-  message.success('操作成功');
-  remoteModalVisible.value = false;
-  loadRemoteConfigs();
 }
 
 async function handleDeleteRemote(id: number) {
-  await deleteRemoteMCP(id);
-  message.success('删除成功');
-  loadRemoteConfigs();
+  try {
+    await deleteRemoteMCP(id);
+    message.success('删除成功');
+    loadRemoteConfigs();
+  } catch (e: any) {
+    message.error(e?.message || '删除失败');
+  }
 }
 
 async function handleToggleRemote(id: number) {
-  await toggleRemoteMCP(id);
-  message.success('操作成功');
-  loadRemoteConfigs();
+  try {
+    await toggleRemoteMCP(id);
+    message.success('操作成功');
+    loadRemoteConfigs();
+  } catch (e: any) {
+    message.error(e?.message || '操作失败');
+  }
 }
 
 async function handleTestRemote(id: number) {
-  const res = await testRemoteMCP(id);
-  if (res.data?.reachable) {
-    message.success(`连接成功，发现 ${res.data.tools?.length || 0} 个工具`);
-  } else {
-    message.error(`连接失败: ${res.data?.error || '未知错误'}`);
+  try {
+    const res = await testRemoteMCP(id);
+    if (res.data?.reachable) {
+      message.success(`连接成功，发现 ${res.data.tools?.length || 0} 个工具`);
+    } else {
+      message.error(`连接失败: ${res.data?.error || '未知错误'}`);
+    }
+  } catch (e: any) {
+    message.error(e?.message || '测试失败');
   }
 }
 

@@ -11,6 +11,7 @@ export default defineConfig(async () => {
             changeOrigin: true,
             rewrite: (path) => path.replace(/^\/api/, ''),
             target: 'http://localhost:8889/api',
+            // target: 'http://47.76.189.98:8889/api',
             // target: 'http://142.171.2.134:8889/api',
             ws: true,
           },

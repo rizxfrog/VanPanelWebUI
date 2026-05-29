@@ -87,7 +87,7 @@ export async function getAgentTools() {
 export async function queryAgent(message: string, sessionId?: string) {
   const response = await baseRequestClient.post<any>(
     '/system/agent/query',
-    { message, sessionId },
+    { question: message, session_id: sessionId },
     { headers: authHeaders() },
   );
   return normalizeAgentResponse<AgentQueryResponse>(response.data);
@@ -118,7 +118,7 @@ export async function queryAgentStream(
   const response = await fetch(`${apiURL}/system/agent/query/stream`, {
     method: 'POST',
     headers: streamHeaders,
-    body: JSON.stringify({ message, sessionId }),
+    body: JSON.stringify({ question: message, session_id: sessionId }),
     signal,
   });
 
@@ -148,17 +148,27 @@ export async function queryAgentStream(
     }
   };
 
+  let doneReceived = false;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const blocks = buffer.split('\n\n');
     buffer = blocks.pop() || '';
-    blocks.filter(Boolean).forEach(dispatch);
+    blocks.filter(Boolean).forEach((block) => {
+      dispatch(block);
+      if (block.match(/^event:\s*done/m)) doneReceived = true;
+    });
   }
 
   if (buffer.trim()) {
     dispatch(buffer);
+    if (buffer.match(/^event:\s*done/m)) doneReceived = true;
+  }
+
+  // 流结束但没收到 done 事件时，通知前端
+  if (!doneReceived) {
+    handlers.onDone?.({});
   }
 }
 

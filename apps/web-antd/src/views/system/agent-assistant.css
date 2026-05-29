@@ -1,6 +1,8 @@
 .agent-assistant {
+  display: flex;
+  flex-direction: column;
   min-height: calc(100vh - 120px);
-  padding: 20px;
+  padding: 20px 20px 0;
   color: #172033;
   background:
     radial-gradient(circle at 12% 12%, rgba(34, 197, 94, 0.18), transparent 28%),
@@ -49,6 +51,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 18px;
+  flex: 1;
+  min-height: 0;
 }
 
 .agent-assistant__chat,
@@ -60,8 +64,20 @@
 .agent-assistant__chat .ant-card-body {
   display: flex;
   flex-direction: column;
-  height: 68vh;
+  height: 100%;
   padding: 0;
+}
+
+.agent-assistant__welcome {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 40px 40px 24px;
+  font-size: 15px;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.8;
 }
 
 .agent-assistant__messages {
@@ -105,15 +121,27 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 110px;
   gap: 12px;
-  padding: 16px;
-  background: rgba(248, 250, 252, 0.96);
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 16px 20px 20px;
 }
 
 .agent-assistant__side {
   display: grid;
   gap: 18px;
   align-content: start;
+}
+
+.agent-assistant__tools-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.agent-assistant__tool-activity .ant-card-body {
+  padding: 8px 12px 12px;
+}
+
+.agent-assistant__tool-disabled {
+  color: #94a3b8;
+  text-decoration: line-through;
 }
 
 .agent-assistant__tool-name {
@@ -153,10 +181,6 @@
 @media (max-width: 1080px) {
   .agent-assistant__grid {
     grid-template-columns: 1fr;
-  }
-
-  .agent-assistant__chat .ant-card-body {
-    height: 60vh;
   }
 }
 

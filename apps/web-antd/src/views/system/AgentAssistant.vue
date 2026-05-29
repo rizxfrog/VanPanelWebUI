@@ -148,8 +148,8 @@
           </div>
         </template>
 
-        <!-- Loading Indicator -->
-        <div v-if="loading && messages.length > 0" class="agent-chat__message agent-chat__message--assistant">
+        <!-- Streaming Indicator (only when awaiting first response) -->
+        <div v-if="streaming" class="agent-chat__message agent-chat__message--assistant">
           <div class="agent-chat__avatar">
             <div class="agent-chat__avatar-bot">
               <Icon icon="solar:stars-bold-duotone" />
@@ -212,21 +212,25 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue';
+import {nextTick, onMounted, ref, type UnwrapRef} from 'vue';
 import { message } from 'ant-design-vue';
 import { Icon } from '@iconify/vue';
+import MarkdownIt from 'markdown-it';
 
 import {
-  confirmAgentApproval,
   getAgentTools,
   queryAgentStream,
-  rejectAgentApproval,
-  type AgentApproval,
   type AgentTool,
-  type AgentToolCall,
 } from '#/api/core/system/agent';
 
 import './agent-chat.css';
+
+const md = new MarkdownIt({
+  html: false,
+  breaks: true,
+  linkify: true,
+  typographer: true,
+});
 
 interface ChatMessage {
   id: string;
@@ -251,6 +255,7 @@ interface Suggestion {
 
 const draft = ref('');
 const loading = ref(false);
+const streaming = ref(false);
 const sessionId = ref<string>();
 const scrollRef = ref<HTMLElement>();
 const thinkingMode = ref(false);
@@ -294,12 +299,9 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
 
-function renderMarkdown(content: string): string {
-  // Simple markdown rendering - in production use a proper markdown library
-  return content
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>');
+function renderMarkdown(content: UnwrapRef<ChatMessage["content"]> | undefined): string {
+  if (!content) return '';
+  return md.render(content);
 }
 
 function autoResize(e: Event) {
@@ -320,10 +322,10 @@ function selectSuggestion(suggestion: Suggestion) {
   send();
 }
 
-function handleAction(key: string, message: ChatMessage) {
+function handleAction(key: string, msg: ChatMessage) {
   switch (key) {
     case 'copy':
-      navigator.clipboard.writeText(message.content || '');
+      navigator.clipboard.writeText(msg.content || '');
       message.success('已复制到剪贴板');
       break;
     case 'like':
@@ -357,6 +359,7 @@ async function send() {
   messages.value.push(userMessage);
   draft.value = '';
   loading.value = true;
+  streaming.value = true;
 
   // Reset textarea height
   const textarea = document.querySelector('.agent-chat__input') as HTMLTextAreaElement;
@@ -365,14 +368,7 @@ async function send() {
   await scrollToBottom();
 
   try {
-    const assistantMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      type: 'text',
-      content: '',
-      time: new Date(),
-    };
-    messages.value.push(assistantMessage);
+    let assistantMessage: ChatMessage | null = null;
 
     let streamError: Error | undefined;
     await queryAgentStream(text, sessionId.value, {
@@ -380,10 +376,32 @@ async function send() {
         sessionId.value = data.session_id || data.sessionId || sessionId.value;
       },
       onDelta(content) {
+        if (!assistantMessage) {
+          streaming.value = false;
+          assistantMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            type: 'markdown',
+            content: '',
+            time: new Date(),
+          };
+          messages.value.push(assistantMessage);
+        }
         assistantMessage.content += content;
         void scrollToBottom();
       },
       onDone(data) {
+        streaming.value = false;
+        if (!assistantMessage) {
+          assistantMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            type: 'markdown',
+            content: '',
+            time: new Date(),
+          };
+          messages.value.push(assistantMessage);
+        }
         const result = data.result || {};
         sessionId.value =
           data.session_id ||
@@ -397,8 +415,6 @@ async function send() {
         if (!assistantMessage.content) {
           assistantMessage.content = '（模型未返回内容，请检查后端日志或确认 LLM 配置是否正确）';
         }
-        // Parse content for special blocks (tables, summaries, etc.)
-        parseContentBlocks(assistantMessage);
       },
       onError(error) {
         streamError = error;
@@ -406,19 +422,12 @@ async function send() {
     });
     if (streamError) throw streamError;
   } catch (error: any) {
+    streaming.value = false;
     message.error(error?.message || 'Agent 请求失败');
   } finally {
     loading.value = false;
+    streaming.value = false;
     await scrollToBottom();
-  }
-}
-
-// Parse content for special blocks like tables, summaries, etc.
-function parseContentBlocks(msg: ChatMessage) {
-  // This is a simplified version - in production, use proper markdown parsing
-  // Check for table patterns
-  if (msg.content?.includes('|') && msg.content.includes('\n')) {
-    // Could be a table - keep as text for now, or convert to table type
   }
 }
 

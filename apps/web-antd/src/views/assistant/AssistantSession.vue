@@ -67,6 +67,10 @@
 
         <div class="session-actions">
           <a-space>
+            <a-button type="primary" @click="enterSession(currentSession.id)">
+              <template #icon><ExportOutlined /></template>
+              进入会话
+            </a-button>
             <a-button @click="refreshSession" :loading="searching">
               <template #icon><ReloadOutlined /></template>
               刷新会话
@@ -108,6 +112,14 @@
                   </a-tag>
                 </div>
                 <div class="history-actions">
+                  <a-button 
+                    type="text" 
+                    size="small" 
+                    @click.stop="enterSession(session.id)"
+                  >
+                    <template #icon><ExportOutlined /></template>
+                    进入
+                  </a-button>
                   <a-button 
                     type="text" 
                     size="small" 
@@ -254,7 +266,8 @@ import {
   BarChartOutlined,
   CommentOutlined,
   DatabaseOutlined,
-  ApiOutlined
+  ApiOutlined,
+  ExportOutlined,
 } from '@ant-design/icons-vue';
 import { 
   listAgentSessions,
@@ -389,6 +402,11 @@ const removeFromHistory = (index: number) => {
   sessionHistory.value.splice(index, 1);
   saveHistoryToStorage();
   message.success('已从历史记录中移除');
+};
+
+// 进入会话（跳转到智能助手页面并带上 session_id）
+const enterSession = (sessionId: number | string) => {
+  router.push({ path: '/assistant/agent', query: { session_id: String(sessionId) } });
 };
 
 // 清空所有历史记录

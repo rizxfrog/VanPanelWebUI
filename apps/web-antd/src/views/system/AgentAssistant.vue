@@ -213,12 +213,14 @@
 
 <script setup lang="ts">
 import {nextTick, onMounted, ref, type UnwrapRef} from 'vue';
+import { useRoute } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { Icon } from '@iconify/vue';
 import MarkdownIt from 'markdown-it';
 
 import {
   getAgentTools,
+  getAgentSessionMessages,
   queryAgentStream,
   type AgentTool,
 } from '#/api/core/system/agent';
@@ -231,6 +233,8 @@ const md = new MarkdownIt({
   linkify: true,
   typographer: true,
 });
+
+const route = useRoute();
 
 interface ChatMessage {
   id: string;
@@ -439,7 +443,30 @@ async function loadTools() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   void loadTools();
+
+  // 如果 URL 携带 session_id，加载该会话的历史消息
+  const sid = route.query.session_id;
+  if (sid) {
+    try {
+      const idNum = parseInt(String(sid), 10);
+      if (!isNaN(idNum)) {
+        sessionId.value = String(sid);
+        const resp = await getAgentSessionMessages(idNum, { page: 1, size: 100 });
+        const data = (resp as any)?.data || resp;
+        const items = Array.isArray(data) ? data : data?.items || [];
+        messages.value = items.map((m: any) => ({
+          id: String(m.id),
+          role: m.role,
+          type: m.type || 'markdown',
+          content: m.content || '',
+          time: new Date(m.created_at || Date.now()),
+        }));
+      }
+    } catch {
+      // 加载历史消息失败，从新会话开始
+    }
+  }
 });
 </script>

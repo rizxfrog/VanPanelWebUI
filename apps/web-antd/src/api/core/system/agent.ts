@@ -3,14 +3,9 @@ import { preferences } from '@vben/preferences';
 import { useAccessStore } from '@vben/stores';
 
 import { baseRequestClient, requestClient } from '#/api/request';
+import { normalizeResponse } from '#/api/core/utils';
 
 const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
-
-interface ApiEnvelope<T> {
-  code: number;
-  data: T;
-  message?: string;
-}
 
 export type AgentRisk = 'high' | 'low' | 'safe';
 
@@ -61,27 +56,11 @@ function authHeaders() {
   };
 }
 
-export function normalizeAgentResponse<T>(payload: ApiEnvelope<T> | T): T {
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    'code' in payload &&
-    'data' in payload
-  ) {
-    const envelope = payload as ApiEnvelope<T>;
-    if (envelope.code === 0) {
-      return envelope.data;
-    }
-    throw new Error(envelope.message || 'Agent API request failed');
-  }
-  return payload as T;
-}
-
 export async function getAgentTools() {
   const response = await baseRequestClient.get<any>('/system/agent/tools', {
     headers: authHeaders(),
   });
-  return normalizeAgentResponse<AgentTool[]>(response.data);
+  return normalizeResponse<AgentTool[]>(response.data, 'Agent');
 }
 
 export async function queryAgent(message: string, sessionId?: string) {
@@ -90,7 +69,7 @@ export async function queryAgent(message: string, sessionId?: string) {
     { question: message, session_id: sessionId },
     { headers: authHeaders() },
   );
-  return normalizeAgentResponse<AgentQueryResponse>(response.data);
+  return normalizeResponse<AgentQueryResponse>(response.data, 'Agent');
 }
 
 export interface AgentStreamHandlers {
@@ -172,24 +151,6 @@ export async function queryAgentStream(
   }
 }
 
-export async function confirmAgentApproval(id: string) {
-  const response = await baseRequestClient.post<any>(
-    `/system/agent/approvals/${id}/confirm`,
-    undefined,
-    { headers: authHeaders() },
-  );
-  return normalizeAgentResponse(response.data);
-}
-
-export async function rejectAgentApproval(id: string) {
-  const response = await baseRequestClient.post<any>(
-    `/system/agent/approvals/${id}/reject`,
-    undefined,
-    { headers: authHeaders() },
-  );
-  return normalizeAgentResponse(response.data);
-}
-
 // ===== 内置工具管理 =====
 export function listBuiltinTools() {
   return requestClient.get('/system/agent/builtin-tools/list');
@@ -204,10 +165,6 @@ export function listHubPlugins(params?: { page?: number; size?: number; search?:
   return requestClient.get('/system/agent/hub/plugins/list', { params });
 }
 
-export function getHubPlugin(id: number) {
-  return requestClient.get(`/system/agent/hub/plugins/${id}/detail`);
-}
-
 export function uploadPlugin(formData: FormData) {
   return requestClient.post('/system/agent/hub/plugins/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -216,14 +173,6 @@ export function uploadPlugin(formData: FormData) {
 
 export function installPlugin(id: number, config?: Record<string, any>) {
   return requestClient.post(`/system/agent/hub/plugins/${id}/install`, { config });
-}
-
-export function uninstallPlugin(id: number) {
-  return requestClient.delete(`/system/agent/hub/plugins/${id}/uninstall`);
-}
-
-export function toggleHubPlugin(id: number) {
-  return requestClient.put(`/system/agent/hub/plugins/${id}/toggle`);
 }
 
 // ===== 远程 MCP 管理 =====
@@ -252,10 +201,6 @@ export function testRemoteMCP(id: number) {
 }
 
 // ===== 会话管理（Go 后端接口） =====
-
-export function queryAgentSync(data: { question: string; session_id?: string }) {
-  return requestClient.post('/system/agent/query', data);
-}
 
 export function listAgentSessions(params?: { page?: number; size?: number }) {
   return requestClient.get('/system/agent/sessions/list', { params });

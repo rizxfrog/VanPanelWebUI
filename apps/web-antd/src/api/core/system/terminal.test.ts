@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeTerminalResponse } from './terminal';
+import { normalizeResponse } from '../utils';
 
 describe('terminal api helpers', () => {
   it('unwraps standard backend envelopes', () => {
     expect(
-      normalizeTerminalResponse({
+      normalizeResponse({
         code: 0,
         data: [{ id: 'local', name: 'Local Shell', type: 'local' }],
         message: 'ok',
@@ -15,7 +15,7 @@ describe('terminal api helpers', () => {
 
   it('accepts legacy raw payloads', () => {
     expect(
-      normalizeTerminalResponse([
+      normalizeResponse([
         { id: 'local', name: 'Local Shell', type: 'local' },
       ]),
     ).toEqual([{ id: 'local', name: 'Local Shell', type: 'local' }]);
@@ -23,7 +23,7 @@ describe('terminal api helpers', () => {
 
   it('throws backend error messages', () => {
     expect(() =>
-      normalizeTerminalResponse({
+      normalizeResponse({
         code: 1,
         data: {},
         message: 'terminal service unavailable',

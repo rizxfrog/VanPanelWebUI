@@ -127,7 +127,7 @@
         :loading="loading"
         row-key="id"
         size="middle"
-        @change="handleTableChange"
+        @change="onTableChange"
         :row-selection="{
           selectedRowKeys: selectedRowKeys,
           onChange: onSelectChange,
@@ -383,6 +383,7 @@ import {
 } from '#/api/core/system/audit';
 
 import { getUserDetailApi } from '#/api/core/system/user';
+import { usePagination } from '#/composables/usePagination';
 
 // 扩展审计日志类型，包含用户信息
 interface AuditLogWithUser extends AuditLog {
@@ -454,16 +455,7 @@ const advancedSearchParams = reactive<AdvancedSearchOptions>({
 });
 
 // 分页配置
-const paginationConfig = reactive({
-  current: 1,
-  pageSize: 20,
-  total: 0,
-  showSizeChanger: true,
-  showQuickJumper: true,
-  pageSizeOptions: ['10', '20', '50', '100'],
-  showTotal: (total: number, range: [number, number]) => 
-    `第 ${range[0]}-${range[1]} 条，共 ${total} 条`
-});
+const { paginationConfig, handleTableChange, resetPagination } = usePagination();
 
 // 计算属性
 const getUniqueTargetTypes = computed(() => {
@@ -712,7 +704,7 @@ const performAdvancedSearch = async () => {
 
 // 事件处理
 const handleSearch = () => {
-  paginationConfig.current = 1;
+  resetPagination();
   fetchAuditLogs();
 };
 
@@ -734,7 +726,7 @@ const handleReset = () => {
     endpoint_pattern: ''
   });
   
-  paginationConfig.current = 1;
+  resetPagination();
   fetchAuditLogs();
 };
 
@@ -753,13 +745,12 @@ const handleAdvancedSearch = () => {
 
 const handleAdvancedSearchSubmit = () => {
   advancedSearchVisible.value = false;
-  paginationConfig.current = 1;
+  resetPagination();
   performAdvancedSearch();
 };
 
-const handleTableChange = (pagination: any) => {
-  paginationConfig.current = pagination.current;
-  paginationConfig.pageSize = pagination.pageSize;
+const onTableChange = (pagination: any) => {
+  handleTableChange(pagination);
   fetchAuditLogs();
 };
 
@@ -809,92 +800,13 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-/* 保持原有样式不变 */
+<style scoped lang="scss">
+@use './_shared.scss';
+
 .audit-log {
   padding: 20px;
   background: #f5f5f5;
   min-height: 100vh;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #d9d9d9;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #262626;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.header-actions .ant-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  text-align: center;
-  border: 1px solid #d9d9d9;
-}
-
-.stat-number {
-  font-size: 28px;
-  font-weight: 600;
-  color: #1890ff;
-  margin-bottom: 8px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #8c8c8c;
-}
-
-.search-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #d9d9d9;
-}
-
-.search-left {
-  display: flex;
-  gap: 12px;
-  flex: 1;
-  align-items: flex-end;
-}
-
-.search-input {
-  flex: 1;
-  max-width: 300px;
 }
 
 .status-select,
@@ -906,34 +818,10 @@ onMounted(() => {
   width: 200px;
 }
 
-.search-right {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.table-container {
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #d9d9d9;
-  overflow: hidden;
-}
-
-.table-container :deep(.ant-table-thead > tr > th) {
-  background: #fafafa;
-  font-weight: 600;
-  color: #262626;
-  border-bottom: 1px solid #e8e8e8;
-}
-
 .table-container :deep(.ant-table-tbody > tr > td) {
   font-size: 14px;
   color: #262626;
   line-height: 1.5;
-}
-
-.table-container :deep(.ant-table-tbody > tr:hover > td) {
-  background: #f5f5f5;
 }
 
 /* 高级搜索表单样式 */
@@ -1019,53 +907,9 @@ onMounted(() => {
   font-weight: 500;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 4px;
-}
-
 /* 详情模态框样式 */
 .log-detail {
   padding: 8px 0;
-}
-
-.detail-section {
-  margin-bottom: 24px;
-}
-
-.detail-section h3 {
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #262626;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.detail-item {
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 6px;
-  border: 1px solid #e8e8e8;
-}
-
-.detail-item label {
-  display: block;
-  font-size: 12px;
-  color: #8c8c8c;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.detail-item span {
-  font-size: 14px;
-  color: #262626;
 }
 
 .detail-item .trace-id {
@@ -1126,29 +970,10 @@ onMounted(() => {
 }
 
 @media (max-width: 1200px) {
-  .search-section {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-  }
-  
-  .search-left {
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .search-input {
-    max-width: none;
-  }
-  
   .status-select,
   .type-select,
   .date-picker {
     width: 100%;
-  }
-  
-  .search-right {
-    justify-content: flex-end;
   }
 }
 
@@ -1156,36 +981,7 @@ onMounted(() => {
   .audit-log {
     padding: 12px;
   }
-  
-  .page-header {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-  }
-  
-  .header-actions {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .search-right {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-  
+
   .form-row {
     grid-template-columns: 1fr;
   }

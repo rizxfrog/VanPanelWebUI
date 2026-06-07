@@ -288,8 +288,8 @@ const sessionHistory = ref<Record<string, any>[]>([]);
 const sessionStats = computed(() => {
   const total = sessionHistory.value.length;
   const totalMessages = sessionHistory.value.reduce((sum, session) => sum + (session.message_count || 0), 0);
-  const activeSessions = sessionHistory.value.filter(session => session.status === 'active').length;
-  const archivedSessions = sessionHistory.value.filter(session => session.status === 'archived').length;
+  const activeSessions = sessionHistory.value.filter(session => session.status === 1 || session.status === '1').length;
+  const archivedSessions = sessionHistory.value.filter(session => session.status === 2 || session.status === '2').length;
   
   return {
     totalSessions: total,
@@ -299,26 +299,22 @@ const sessionStats = computed(() => {
   };
 });
 
-// 获取状态颜色
-const getStatusColor = (status?: string) => {
+// 获取状态颜色 (backend: 1=active, 2=archived)
+const getStatusColor = (status?: number | string) => {
   const colorMap: Record<string, string> = {
-    'active': 'green',
-    'inactive': 'orange',
-    'ended': 'red',
-    'error': 'red'
+    '1': 'green',
+    '2': 'orange',
   };
-  return colorMap[status || ''] || 'default';
+  return colorMap[String(status)] || 'default';
 };
 
-// 获取状态文本
-const getStatusText = (status?: string) => {
+// 获取状态文本 (backend: 1=active, 2=archived)
+const getStatusText = (status?: number | string) => {
   const textMap: Record<string, string> = {
-    'active': '活跃',
-    'inactive': '不活跃',
-    'ended': '已结束',
-    'error': '错误'
+    '1': '活跃',
+    '2': '已归档',
   };
-  return textMap[status || ''] || '未知';
+  return textMap[String(status)] || '未知';
 };
 
 // 格式化时间
@@ -482,9 +478,29 @@ const loadHistoryFromStorage = () => {
   }
 };
 
+// 从后端加载会话列表
+const loadSessionsFromBackend = async () => {
+  try {
+    const response = await listAgentSessions({ page: 1, size: 100 });
+    const data = (response as any)?.data || response;
+    if (Array.isArray(data)) {
+      sessionHistory.value = data;
+    } else if (data?.items) {
+      sessionHistory.value = data.items;
+    }
+  } catch (error) {
+    console.error('加载会话列表失败:', error);
+  }
+};
+
 // 页面初始化
-onMounted(() => {
-  loadHistoryFromStorage();
+onMounted(async () => {
+  // 先加载后端数据，如果失败则降级到本地存储
+  try {
+    await loadSessionsFromBackend();
+  } catch {
+    loadHistoryFromStorage();
+  }
 });
 </script>
 

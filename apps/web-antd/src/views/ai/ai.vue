@@ -38,9 +38,6 @@
           <button class="action-button clear-btn" @mousedown.stop @click="clearChat" title="清空聊天">
             <Trash2 :size="16" />
           </button>
-          <button class="action-button refresh-btn" @mousedown.stop @click="refreshKnowledge" title="刷新知识库" :disabled="isRefreshing">
-            <RefreshCw :size="16" :class="{ 'spinning': isRefreshing }" />
-          </button>
           <button class="action-button close-btn" @mousedown.stop @click="closeWindow" title="关闭">
             <X :size="16" />
           </button>
@@ -51,34 +48,12 @@
       <div class="status-bar">
         <div class="status-left">
           <div class="status-indicator">
-            <div class="status-dot" :class="{ 'online': isConnected }"></div>
+            <div class="status-dot online"></div>
             <span class="status-text">
               {{ connectionStatus }}
             </span>
           </div>
           
-          <!-- 模式切换器 -->
-          <div class="mode-switcher">
-            <button 
-              class="mode-button" 
-              :class="{ 'active': currentMode === 1 }"
-              @click="switchMode('rag')"
-              title="RAG模式 - 基于知识库回答"
-            >
-              <FileText :size="12" />
-              RAG
-            </button>
-            <button 
-              class="mode-button" 
-              :class="{ 'active': currentMode === 2 }"
-              @click="switchMode('mcp')"
-              title="MCP模式 - 工具调用模式"
-            >
-              <Zap :size="12" />
-              MCP
-            </button>
-          </div>
-
           <!-- 会话切换器 -->
           <div class="session-switcher" @click.stop>
             <button class="session-button" @click="showSessionsPanel = !showSessionsPanel" :title="currentSessionName">
@@ -149,11 +124,8 @@
                 <div class="typing-info">
                   <span class="typing-text">AI正在思考中...</span>
                   <div class="typing-details">
-                    <span class="mode-badge" :class="currentMode === 1 ? 'rag' : 'mcp'">
-                      {{ currentMode === 1 ? 'RAG模式' : 'MCP模式' }}
-                    </span>
                     <span class="session-info" v-if="sessionId">
-                      会话: {{ sessionId.slice(-8) }}
+                      会话: {{ sessionId }}
                     </span>
                   </div>
                 </div>
@@ -161,42 +133,6 @@
 
               <!-- 正常消息内容 -->
               <div v-else class="text" v-html="renderMarkdown(msg.content || '')"></div>
-
-              <!-- 消息来源显示 -->
-              <div v-if="msg.sources && msg.sources.length > 0" class="message-sources">
-                <div class="sources-header">
-                  <FileText :size="14" />
-                  <span>参考来源</span>
-                </div>
-                <div class="sources-list">
-                  <div v-for="(source, idx) in msg.sources" :key="`source-${idx}`" class="source-item">
-                    <div class="source-title">文档 {{ idx + 1 }}</div>
-                    <div class="source-preview">{{ source.content ? source.content.substring(0, 100) + '...' : '内容不可用' }}</div>
-                    <div v-if="source.score !== undefined" class="source-score">
-                      相关性: {{ (source.score * 100).toFixed(1) }}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 后续问题推荐 -->
-              <div v-if="msg.followUpQuestions && msg.followUpQuestions.length > 0" class="follow-up-questions">
-                <div class="follow-up-header">
-                  <HelpCircle :size="14" />
-                  <span>您可能还想问</span>
-                </div>
-                <div class="follow-up-list">
-                  <button 
-                    v-for="(question, idx) in msg.followUpQuestions" 
-                    :key="`followup-${idx}`" 
-                    class="follow-up-question"
-                    @click="sendQuickMessage(question)"
-                    :disabled="sending"
-                  >
-                    {{ question }}
-                  </button>
-                </div>
-              </div>
 
               <div class="message-actions" v-if="msg.type === 'ai' && msg.content">
                 <button class="message-action-btn" @click="copyMessage(msg.content)" title="复制">
@@ -266,26 +202,10 @@
               <span>启用网络搜索</span>
             </label>
           </div>
-          <div class="option-item">
-            <label class="option-label">
-              <span>最大上下文文档数：</span>
-              <select v-model="maxContextDocs" class="option-select">
-                <option value="3">3</option>
-                <option value="5">5</option>
-                <option value="10">10</option>
-                <option value="15">15</option>
-              </select>
-            </label>
-          </div>
         </div>
 
         <div class="input-hints">
           <span class="hint-item">Enter发送 / Shift+Enter换行</span>
-          <div class="mode-info">
-            <span class="mode-indicator" :class="currentMode === 1 ? 'rag' : 'mcp'">
-              {{ currentMode === 1 ? 'RAG模式' : 'MCP模式' }}
-            </span>
-          </div>
           <span class="shortcut-hint">
             <span class="shortcut-key">Ctrl + /</span>
             快速打开
@@ -333,10 +253,8 @@ import { message } from 'ant-design-vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import {
-  assistantQuery,
-  clearAssistantCache,
-  refreshKnowledgeBase
-} from '#/api/core/aiops/assistant';
+  queryAgentStream,
+} from '#/api/core/system/agent';
 
 // 状态管理
 const isFloatWindowVisible = ref(false);
@@ -346,7 +264,6 @@ const isDragging = ref(false);
 const isResizing = ref(false);
 const globalInputMessage = ref('');
 const sending = ref(false);
-const isConnected = ref(false);
 const isRefreshing = ref(false);
 const errorMessage = ref('');
 const showAdvancedOptions = ref(false);
@@ -380,7 +297,6 @@ const persistState = () => {
       windowSize: { width: windowSize.width, height: windowSize.height },
       isMinimized: isMinimized.value,
       isExpanded: isExpanded.value,
-      currentMode: currentMode.value,
       showAdvancedOptions: showAdvancedOptions.value
     };
     localStorage.setItem(UI_STATE_KEY, JSON.stringify(uiState));
@@ -388,8 +304,6 @@ const persistState = () => {
     const MAX_MSG = 50;
     const chatState = {
       sessionId: sessionId.value,
-      isConnected: isConnected.value,
-      chatHistory: Array.isArray(chatHistory.value) ? chatHistory.value.slice(-MAX_MSG) : [],
       chatMessages: (() => {
         try {
           const plain = JSON.parse(JSON.stringify(chatMessages));
@@ -421,7 +335,6 @@ const loadState = () => {
       }
       isMinimized.value = !!ui?.isMinimized;
       isExpanded.value = !!ui?.isExpanded;
-      currentMode.value = ui?.currentMode === 2 ? 2 : 1;
       showAdvancedOptions.value = !!ui?.showAdvancedOptions;
     }
 
@@ -429,8 +342,6 @@ const loadState = () => {
     if (chatRaw) {
       const chat = JSON.parse(chatRaw);
       sessionId.value = chat?.sessionId || '';
-      isConnected.value = !!chat?.isConnected;
-      chatHistory.value = Array.isArray(chat?.chatHistory) ? chat.chatHistory : [];
       const msgs = Array.isArray(chat?.chatMessages) ? chat.chatMessages : [];
       if (msgs.length > 0) {
         chatMessages.length = 0;
@@ -457,35 +368,15 @@ const loadState = () => {
   }
 };
 
-// 模式管理 - 1=RAG模式，2=MCP模式
-const currentMode = ref(1); // 默认为RAG模式
-const chatHistory = ref([]); // 聊天历史记录
-
 // 高级选项
 const useWebSearch = ref(false);
-const maxContextDocs = ref(5);
 
 // 连接状态计算属性
 const connectionStatus = computed(() => {
   if (sending.value) return '正在处理...';
-  if (isRefreshing.value) return '刷新知识库中...';
-  if (!sessionId.value) return '准备就绪';
-  return isConnected.value ? '已连接' : '准备就绪';
+  if (isRefreshing.value) return '刷新中...';
+  return '已连接';
 });
-
-// 模式切换函数
-const switchMode = (mode) => {
-  const modeNum = mode === 'rag' ? 1 : 2;
-  if (currentMode.value === modeNum) return;
-  
-  currentMode.value = modeNum;
-  message.info(`已切换到${mode === 'rag' ? 'RAG' : 'MCP'}模式`);
-  
-  // 清空聊天历史，重新开始会话
-  sessionId.value = '';
-  chatHistory.value = [];
-  isConnected.value = false;
-};
 
 // 消息提示
 const showSuccess = (msg) => {
@@ -497,24 +388,6 @@ const showError = (msg, duration = 5000) => {
   setTimeout(() => {
     errorMessage.value = '';
   }, duration);
-};
-
-// 重试机制
-const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      
-      // 指数退避
-      const delay = baseDelay * Math.pow(2, attempt - 1);
-
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
 };
 
 // 错误分类处理
@@ -646,9 +519,6 @@ const resetWindow = () => {
   sessionId.value = '';
   errorMessage.value = '';
   showAdvancedOptions.value = false;
-  currentMode.value = 1; // 重置为默认RAG模式
-  chatHistory.value = [];
-  isConnected.value = false;
   initChatMessages();
 };
 
@@ -724,26 +594,6 @@ const initChatMessages = () => {
   });
 };
 
-// 模拟流式渲染工具
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-const simulateStreamResponse = async (messageObj, fullText) => {
-  if (!fullText) return;
-  const total = fullText.length;
-  const step = total > 2000 ? 60 : total > 1000 ? 40 : total > 300 ? 20 : 8;
-  const delay = total > 2000 ? 8 : total > 1000 ? 12 : total > 300 ? 16 : 22;
-  let index = 0;
-  while (index < total) {
-    if (!sending.value) break;
-    const next = Math.min(total, index + step);
-    messageObj.content += fullText.slice(index, next);
-    index = next;
-    await nextTick();
-    scrollToBottom();
-    await sleep(delay);
-  }
-};
-
 // 发送消息
 const sendMessage = async (value) => {
   const trimmedValue = value.trim();
@@ -763,18 +613,10 @@ const sendMessage = async (value) => {
   };
   chatMessages.push(userMessage);
 
-  // 添加用户消息到聊天历史
-  chatHistory.value.push({
-    role: 'user',
-    content: trimmedValue
-  });
-
   const aiMessagePlaceholder = {
     content: '',
     type: 'ai',
     time: formatTime(new Date()),
-    sources: [],
-    followUpQuestions: []
   };
   chatMessages.push(aiMessagePlaceholder);
 
@@ -782,82 +624,64 @@ const sendMessage = async (value) => {
   await nextTick();
   scrollToBottom();
 
+  // 支持取消
+  if (abortController.value) {
+    try { abortController.value.abort(); } catch {}
+  }
+  abortController.value = new AbortController();
+  const signal = abortController.value.signal;
+
   try {
-    // 构建查询参数 - 使用新的接口结构
-    const queryParams = {
-      question: trimmedValue,
-      mode: currentMode.value,
-      chat_history: chatHistory.value.slice(-10), // 只保留最近10轮对话
-      use_web_search: useWebSearch.value
-    };
+    const lastMessage = chatMessages[chatMessages.length - 1];
 
-    // 如果有session_id，则传递给后端
-    if (sessionId.value) {
-      queryParams.session_id = sessionId.value;
-    }
+    await queryAgentStream(
+      trimmedValue,
+      sessionId.value || undefined,
+      {
+        onStart: (data) => {
+          // 保存 session_id
+          if (data?.session_id) {
+            sessionId.value = data.session_id;
+          }
+          if (data?.sessionId) {
+            sessionId.value = data.sessionId;
+          }
+        },
+        onDelta: (content, _data) => {
+          if (lastMessage && content) {
+            lastMessage.content += content;
+            nextTick(() => scrollToBottom());
+          }
+        },
+        onDone: (data) => {
+          if (data?.session_id) {
+            sessionId.value = data.session_id;
+          }
+          errorMessage.value = '';
+          lastFailedQuestion.value = '';
+        },
+        onError: (err) => {
+          throw err;
+        },
+      },
+      signal,
+    );
 
-    // 支持取消
-    if (abortController.value) {
-      try { abortController.value.abort(); } catch {}
-    }
-    abortController.value = new AbortController();
-    const signal = abortController.value.signal;
-    const response = await assistantQuery(queryParams, { signal });
-
-    if (response?.answer) {
-
-      const lastMessage = chatMessages[chatMessages.length - 1];
-      if (lastMessage) {
-        if (response.source_documents && response.source_documents.length > 0) {
-          lastMessage.sources = response.source_documents;
-        }
-        if (response.follow_up_questions && response.follow_up_questions.length > 0) {
-          lastMessage.followUpQuestions = response.follow_up_questions;
-        }
-        if (response.relevance_score !== undefined && response.relevance_score !== null) {
-          lastMessage.relevanceScore = response.relevance_score;
-        }
-        if (response.recall_rate !== undefined && response.recall_rate !== null) {
-          lastMessage.recallRate = response.recall_rate;
-        }
-
-        await simulateStreamResponse(lastMessage, response.answer);
-      }
-
-      // 保存/更新会话ID
-      if (response.session_id) {
-        if (!sessionId.value) {
-
-          showSuccess('会话已建立');
-        }
-        sessionId.value = response.session_id;
-        isConnected.value = true;
-      }
-
-      chatHistory.value.push({
-        role: 'assistant',
-        content: chatMessages[chatMessages.length - 1]?.content || response.answer
-      });
-      errorMessage.value = '';
-      lastFailedQuestion.value = '';
-
-    } else {
-      throw new Error('AI响应格式不正确');
+    // If no content was streamed, show a fallback
+    if (lastMessage && !lastMessage.content) {
+      lastMessage.content = '(AI 助手未返回有效内容)';
     }
   } catch (error) {
     lastFailedQuestion.value = trimmedValue;
 
+    // Remove empty AI placeholder
     if (chatMessages.length > 0 && chatMessages[chatMessages.length - 1]?.type === 'ai' && !chatMessages[chatMessages.length - 1]?.content) {
       chatMessages.pop();
     }
 
-    // 移除用户消息从聊天历史
-    if (chatHistory.value.length > 0 && chatHistory.value[chatHistory.value.length - 1]?.role === 'user') {
-      chatHistory.value.pop();
+    if (error?.name !== 'AbortError') {
+      handleApiError(error, 'AI查询');
     }
-
-    // 使用新的错误处理机制
-    handleApiError(error, 'AI查询');
   } finally {
     sending.value = false;
     abortController.value = null;
@@ -867,83 +691,23 @@ const sendMessage = async (value) => {
   }
 };
 
-// 刷新知识库
-const refreshKnowledge = async () => {
-  if (isRefreshing.value) return;
-
-  try {
-    isRefreshing.value = true;
-
-    // 使用重试机制
-    const response = await retryWithBackoff(async () => {
-      return await refreshKnowledgeBase();
-    });
-
-    if (response?.refreshed !== false) {
-      const docsCount = response?.documents_count;
-      const vectorCount = response?.vector_count;
-      let successMsg = '知识库刷新成功';
-      
-      if (docsCount !== undefined) {
-        successMsg += `，处理文档 ${docsCount} 个`;
-      }
-      if (vectorCount !== undefined) {
-        successMsg += `，向量 ${vectorCount} 个`;
-      }
-      
-      showSuccess(successMsg);
-    } else {
-      throw new Error(response?.message || '刷新知识库失败');
-    }
-  } catch (error) {
-    handleApiError(error, '刷新知识库');
-  } finally {
-    isRefreshing.value = false;
-  }
-};
-
 // 清空聊天
-const clearChat = async () => {
+const clearChat = () => {
   if (chatMessages.length <= 1) {
     message.error('暂无聊天记录');
     return;
   }
 
-  if (!confirm('确定要清空所有聊天记录和缓存吗？此操作不可恢复。')) {
+  if (!confirm('确定要清空所有聊天记录吗？此操作不可恢复。')) {
     return;
   }
 
-  try {
-    // 清除服务器缓存（如果有会话）
-    if (sessionId.value) {
-      try {
-        const response = await clearAssistantCache();
+  // 清空本地状态
+  sessionId.value = '';
+  initChatMessages();
 
-        showSuccess('服务器缓存已清除');
-      } catch (error) {
-
-        // 继续清空本地记录
-      }
-    }
-
-    // 清空本地状态
-    sessionId.value = '';
-    chatHistory.value = [];
-    isConnected.value = false;
-    initChatMessages();
-
-    message.success('聊天记录已清空');
-    persistState();
-  } catch (error) {
-
-    // 即使出错也要清空本地记录
-    sessionId.value = '';
-    chatHistory.value = [];
-    isConnected.value = false;
-    initChatMessages();
-    message.warning('清空完成，但可能存在部分错误');
-    persistState();
-  }
+  message.success('聊天记录已清空');
+  persistState();
 };
 
 // 快捷消息发送
@@ -1343,10 +1107,6 @@ watch(chatMessages, () => {
   persistState();
 }, { deep: true });
 
-watch(chatHistory, () => {
-  persistState();
-});
-
 watch(sessionId, () => {
   persistState();
 });
@@ -1359,7 +1119,7 @@ watch(windowSize, () => {
   persistState();
 }, { deep: true });
 
-watch([isMinimized, isExpanded, currentMode, showAdvancedOptions], () => {
+watch([isMinimized, isExpanded, showAdvancedOptions], () => {
   persistState();
 });
 

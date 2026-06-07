@@ -22,10 +22,6 @@
               <Icon icon="lucide:download" size="16" color="#8c8c8c" />
               导出会话
             </a-button>
-            <a-button @click="goToSessionManage" type="primary">
-              <Icon icon="lucide:users" size="16" color="#ffffff" />
-              会话管理
-            </a-button>
           </a-space>
         </div>
       </div>
@@ -72,38 +68,6 @@
                     <div class="message-content">
                       <div class="message-text" v-html="formatMarkdown(message.content)"></div>
                       <div class="message-time">{{ formatTime(message.timestamp) }}</div>
-
-                      <!-- 来源文档 -->
-                      <div v-if="message.sourceDocuments && message.sourceDocuments.length > 0"
-                        class="source-documents">
-                        <a-divider style="margin: 12px 0 8px 0;" />
-                        <div class="source-title">
-                          <Icon icon="lucide:file-text" size="14" color="#8c8c8c" />
-                          参考文档
-                        </div>
-                        <div class="source-list">
-                          <a-tag v-for="(doc, idx) in message.sourceDocuments.slice(0, 3)" :key="idx" color="blue"
-                            class="source-tag" @click="showDocumentDetail(doc)">
-                            {{ doc.title || `文档${idx + 1}` }}
-                          </a-tag>
-                        </div>
-                      </div>
-
-                      <!-- 推荐问题 -->
-                      <div v-if="message.followUpQuestions && message.followUpQuestions.length > 0"
-                        class="follow-up-questions">
-                        <a-divider style="margin: 12px 0 8px 0;" />
-                        <div class="follow-up-title">
-                          <Icon icon="lucide:lightbulb" size="14" color="#8c8c8c" />
-                          相关问题
-                        </div>
-                        <div class="question-list">
-                          <a-button v-for="(question, idx) in message.followUpQuestions.slice(0, 3)" :key="idx"
-                            type="link" size="small" @click="askFollowUpQuestion(question)" class="follow-up-btn">
-                            {{ question }}
-                          </a-button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -153,19 +117,6 @@
               </div>
 
               <div class="info-item">
-                <label class="form-label">助手模式</label>
-                <a-select v-model:value="assistantMode" class="form-control" @change="onModeChange">
-                  <a-select-option :value="1">RAG模式</a-select-option>
-                  <a-select-option :value="2">MCP模式</a-select-option>
-                </a-select>
-              </div>
-
-              <div class="info-item">
-                <label class="form-label">网络搜索</label>
-                <a-switch v-model:checked="useWebSearch" />
-              </div>
-
-              <div class="info-item">
                 <label class="form-label">消息数量</label>
                 <div class="form-value">{{ chatHistory.length }}</div>
               </div>
@@ -194,45 +145,21 @@
       </a-row>
     </div>
 
-    <!-- 文档详情弹窗 -->
-    <a-modal v-model:open="documentModalVisible" title="文档详情" width="800px" :footer="null">
-      <div v-if="selectedDocument">
-        <a-descriptions :column="1" bordered size="small">
-          <a-descriptions-item label="标题">{{ selectedDocument.title }}</a-descriptions-item>
-          <a-descriptions-item label="来源">{{ selectedDocument.source }}</a-descriptions-item>
-          <a-descriptions-item label="相关度">
-            <a-progress :percent="Math.round((selectedDocument.score || 0) * 100)" size="small" />
-          </a-descriptions-item>
-        </a-descriptions>
-        <a-divider />
-        <div class="document-content">
-          <h4>内容摘要：</h4>
-          <div v-html="formatMarkdown(selectedDocument.content || selectedDocument.page_content)"></div>
-        </div>
-      </div>
-    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, nextTick, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { message } from 'ant-design-vue';
 import { Icon } from '@iconify/vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { assistantQuery } from '#/api/core/aiops/assistant';
-import type { AssistantRequest, AssistantResponse } from '#/api/core/aiops/assistant';
-
-// 路由
-const router = useRouter();
+import { queryAgentStream } from '#/api/core/system/agent';
 
 // 响应式数据
 const questionInput = ref('');
 const isLoading = ref(false);
 const currentSessionId = ref('');
-const assistantMode = ref(1);
-const useWebSearch = ref(false);
 const chatHistoryRef = ref<HTMLElement>();
 
 // 聊天历史
@@ -240,24 +167,17 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
-  sourceDocuments?: any[];
-  followUpQuestions?: string[];
-  relevanceScore?: number;
 }
 
 const chatHistory = ref<ChatMessage[]>([]);
 
-// 弹窗相关
-const documentModalVisible = ref(false);
-const selectedDocument = ref<any>(null);
-
 // 快捷问题
 const quickQuestions = ref([
-  '如何使用智能助手？',
-  '系统有哪些功能？',
-  '如何管理会话？',
-  '如何上传文档到知识库？',
-  '系统的技术架构是什么？'
+  '帮我查看Pod列表',
+  'Check node status',
+  '系统有哪些工具？',
+  'What tools are available?',
+  'Describe Kubernetes cluster'
 ]);
 
 // 发送消息
@@ -284,45 +204,58 @@ const sendMessage = async () => {
   try {
     isLoading.value = true;
 
-    // 构建请求参数
-    const request: AssistantRequest = {
-      question,
-      mode: assistantMode.value,
-      use_web_search: useWebSearch.value,
-      session_id: currentSessionId.value || undefined,
-      chat_history: chatHistory.value.slice(0, -1).map(msg => ({
-        [msg.role]: msg.content
-      }))
-    };
-
-    // 发送请求
-    const response = await assistantQuery(request);
-    const data = response as AssistantResponse;
-
-    // 更新会话ID
-    if (data.session_id) {
-      currentSessionId.value = data.session_id;
-    }
-
+    // 创建 AI 消息占位符
     const assistantMessage: ChatMessage = {
       role: 'assistant',
-      content: data.answer,
+      content: '',
       timestamp: new Date().toISOString(),
-      sourceDocuments: data.source_documents,
-      followUpQuestions: data.follow_up_questions,
-      relevanceScore: data.relevance_score
     };
     chatHistory.value.push(assistantMessage);
 
-    // 滚动到底部
-    await nextTick();
-    scrollToBottom();
+    await queryAgentStream(
+      question,
+      currentSessionId.value || undefined,
+      {
+        onStart: (data) => {
+          if (data?.session_id) {
+            currentSessionId.value = data.session_id;
+          }
+          if (data?.sessionId) {
+            currentSessionId.value = data.sessionId;
+          }
+        },
+        onDelta: (content, _data) => {
+          if (content) {
+            assistantMessage.content += content;
+            nextTick(() => scrollToBottom());
+          }
+        },
+        onDone: (data) => {
+          if (data?.session_id) {
+            currentSessionId.value = data.session_id;
+          }
+        },
+        onError: (err) => {
+          throw err;
+        },
+      },
+    );
 
+    // If no content was streamed
+    if (!assistantMessage.content) {
+      assistantMessage.content = '(AI 助手未返回有效内容)';
+    }
   } catch (error: any) {
     message.error(`发送失败: ${error.message}`);
-
+    // Remove empty placeholder
+    const last = chatHistory.value[chatHistory.value.length - 1];
+    if (last?.role === 'assistant' && !last.content) {
+      chatHistory.value.pop();
+    }
   } finally {
     isLoading.value = false;
+    await nextTick();
+    scrollToBottom();
   }
 };
 
@@ -330,18 +263,6 @@ const sendMessage = async () => {
 const askQuickQuestion = (question: string) => {
   questionInput.value = question;
   sendMessage();
-};
-
-// 追问问题
-const askFollowUpQuestion = (question: string) => {
-  questionInput.value = question;
-  sendMessage();
-};
-
-// 模式切换
-const onModeChange = () => {
-  const modeNames: Record<number, string> = { 1: 'RAG模式', 2: 'MCP模式' };
-  message.info(`已切换到${modeNames[assistantMode.value]}`);
 };
 
 // 清空会话
@@ -361,8 +282,6 @@ const exportSession = () => {
   const sessionData = {
     session_id: currentSessionId.value,
     timestamp: new Date().toISOString(),
-    mode: assistantMode.value,
-    use_web_search: useWebSearch.value,
     messages: chatHistory.value
   };
 
@@ -377,17 +296,6 @@ const exportSession = () => {
   URL.revokeObjectURL(url);
 
   message.success('会话导出成功');
-};
-
-// 跳转到会话管理
-const goToSessionManage = () => {
-  router.push('/assistant/session');
-};
-
-// 显示文档详情
-const showDocumentDetail = (document: any) => {
-  selectedDocument.value = document;
-  documentModalVisible.value = true;
 };
 
 // 格式化时间

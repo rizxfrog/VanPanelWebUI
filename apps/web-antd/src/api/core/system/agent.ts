@@ -250,3 +250,28 @@ export function toggleRemoteMCP(id: number) {
 export function testRemoteMCP(id: number) {
   return requestClient.post(`/system/agent/remote-mcps/${id}/test`);
 }
+
+// ===== 会话管理（Go 后端接口） =====
+
+export function queryAgentSync(data: { question: string; session_id?: string }) {
+  return requestClient.post('/system/agent/query', data);
+}
+
+export function listAgentSessions(params?: { page?: number; size?: number }) {
+  return requestClient.get('/system/agent/sessions/list', { params });
+}
+
+export function getAgentSession(id: number) {
+  return requestClient.get(`/system/agent/sessions/${id}/detail`);
+}
+
+export function deleteAgentSession(id: number) {
+  return requestClient.delete(`/system/agent/sessions/${id}/delete`);
+}
+
+export function getAgentSessionMessages(
+  id: number,
+  params?: { page?: number; size?: number },
+) {
+  return requestClient.get(`/system/agent/sessions/${id}/messages`, { params });
+}

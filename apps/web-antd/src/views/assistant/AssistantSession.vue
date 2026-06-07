@@ -41,10 +41,10 @@
       </a-card>
 
       <!-- 会话详情 -->
-      <a-card v-if="currentSession.session_id" title="会话详情" class="session-detail-card">
+      <a-card v-if="currentSession.id" title="会话详情" class="session-detail-card">
         <a-descriptions :column="2" bordered>
           <a-descriptions-item label="会话ID">
-            <a-typography-text copyable>{{ currentSession.session_id }}</a-typography-text>
+            <a-typography-text copyable>{{ currentSession.id }}</a-typography-text>
           </a-descriptions-item>
           <a-descriptions-item label="会话状态">
             <a-tag :color="getStatusColor(currentSession.status)">
@@ -52,18 +52,16 @@
             </a-tag>
           </a-descriptions-item>
           <a-descriptions-item label="创建时间">
-            {{ currentSession.created_time ? formatTime(currentSession.created_time) : '未知' }}
+            {{ currentSession.created_at ? formatTime(currentSession.created_at) : '未知' }}
           </a-descriptions-item>
           <a-descriptions-item label="最后活动">
-            {{ currentSession.last_activity ? formatTime(currentSession.last_activity) : '未知' }}
+            {{ currentSession.updated_at ? formatTime(currentSession.updated_at) : '未知' }}
           </a-descriptions-item>
           <a-descriptions-item label="消息数量">
             <a-badge :count="currentSession.message_count || 0" :number-style="{ backgroundColor: '#52c41a' }" />
           </a-descriptions-item>
-          <a-descriptions-item label="运行模式">
-            <a-tag :color="getModeColor(currentSession.mode)">
-              {{ getModeText(currentSession.mode) }}
-            </a-tag>
+          <a-descriptions-item label="工具数量">
+            <a-tag color="blue">{{ currentSession.tool_count || 0 }} 个工具</a-tag>
           </a-descriptions-item>
         </a-descriptions>
 
@@ -97,19 +95,16 @@
         <div v-else class="history-list">
           <div 
             v-for="(session, index) in sessionHistory" 
-            :key="session.session_id"
+            :key="session.id"
             class="history-item"
             @click="loadHistorySession(session)"
           >
             <div class="history-content">
               <div class="history-header">
                 <div class="session-info">
-                  <span class="session-id">{{ session.session_id.slice(0, 8) }}...</span>
+                  <span class="session-id">{{ session.title || `会话 #${session.id}` }}</span>
                   <a-tag :color="getStatusColor(session.status)" size="small">
                     {{ getStatusText(session.status) }}
-                  </a-tag>
-                  <a-tag :color="getModeColor(session.mode)" size="small">
-                    {{ getModeText(session.mode) }}
                   </a-tag>
                 </div>
                 <div class="history-actions">
@@ -126,7 +121,7 @@
               <div class="history-meta">
                 <div class="meta-item">
                   <ClockCircleOutlined />
-                  <span>{{ formatTime(session.last_activity) }}</span>
+                  <span>{{ formatTime(session.updated_at || session.created_at) }}</span>
                 </div>
                 <div class="meta-item">
                   <MessageOutlined />
@@ -134,7 +129,7 @@
                 </div>
                 <div class="meta-item">
                   <CalendarOutlined />
-                  <span>{{ formatTime(session.created_time) }}</span>
+                  <span>{{ formatTime(session.created_at) }}</span>
                 </div>
               </div>
             </div>
@@ -218,8 +213,8 @@
           </a-col>
           <a-col :span="6">
             <a-statistic
-              title="RAG模式会话"
-              :value="sessionStats.ragSessions"
+              title="活跃会话"
+              :value="sessionStats.activeSessions"
               :value-style="{ color: '#fa8c16' }"
             >
               <template #prefix><DatabaseOutlined /></template>
@@ -227,8 +222,8 @@
           </a-col>
           <a-col :span="6">
             <a-statistic
-              title="MCP模式会话"
-              :value="sessionStats.mcpSessions"
+              title="归档会话"
+              :value="sessionStats.archivedSessions"
               :value-style="{ color: '#722ed1' }"
             >
               <template #prefix><ApiOutlined /></template>
@@ -262,9 +257,11 @@ import {
   ApiOutlined
 } from '@ant-design/icons-vue';
 import { 
-  getSessionInfo,
-  type SessionInfoResponse
-} from '#/api/core/aiops/assistant';
+  listAgentSessions,
+  getAgentSession,
+  deleteAgentSession,
+  getAgentSessionMessages,
+} from '#/api/core/system/agent';
 
 // 响应式数据
 const router = useRouter();
@@ -272,31 +269,33 @@ const searching = ref(false);
 const searchSessionId = ref('');
 const showStats = ref(false);
 
-// 当前会话信息
-const currentSession = reactive<Partial<SessionInfoResponse>>({
-  session_id: '',
-  created_time: '',
-  last_activity: '',
+// 当前会话信息 (Go agent model)
+const currentSession = reactive<Record<string, any>>({
+  id: '',
+  title: '',
+  model_name: '',
+  tool_count: 0,
   message_count: 0,
-  mode: 1,
-  status: ''
+  status: '',
+  created_at: '',
+  updated_at: '',
 });
 
 // 会话历史记录 (本地存储)
-const sessionHistory = ref<SessionInfoResponse[]>([]);
+const sessionHistory = ref<Record<string, any>[]>([]);
 
 // 会话统计
 const sessionStats = computed(() => {
   const total = sessionHistory.value.length;
   const totalMessages = sessionHistory.value.reduce((sum, session) => sum + (session.message_count || 0), 0);
-  const ragSessions = sessionHistory.value.filter(session => session.mode === 1).length;
-  const mcpSessions = sessionHistory.value.filter(session => session.mode === 2).length;
+  const activeSessions = sessionHistory.value.filter(session => session.status === 'active').length;
+  const archivedSessions = sessionHistory.value.filter(session => session.status === 'archived').length;
   
   return {
     totalSessions: total,
     totalMessages,
-    ragSessions,
-    mcpSessions
+    activeSessions,
+    archivedSessions
   };
 });
 
@@ -322,41 +321,37 @@ const getStatusText = (status?: string) => {
   return textMap[status || ''] || '未知';
 };
 
-// 获取模式颜色
-const getModeColor = (mode?: number) => {
-  return mode === 1 ? 'blue' : mode === 2 ? 'purple' : 'default';
-};
-
-// 获取模式文本
-const getModeText = (mode?: number) => {
-  return mode === 1 ? 'RAG模式' : mode === 2 ? 'MCP模式' : '未知模式';
-};
-
 // 格式化时间
 const formatTime = (timestamp?: string) => {
   if (!timestamp) return '未知';
   return new Date(timestamp).toLocaleString();
 };
 
-// 搜索会话
+// 搜索会话 (use Go integer ID)
 const searchSession = async () => {
   if (!searchSessionId.value.trim()) {
     message.warning('请输入会话ID');
     return;
   }
 
+  const idNum = parseInt(searchSessionId.value.trim(), 10);
+  if (isNaN(idNum)) {
+    message.warning('请输入有效的数字会话ID');
+    return;
+  }
+
   try {
     searching.value = true;
-    const response = await getSessionInfo(searchSessionId.value.trim());
-    const data = response as SessionInfoResponse;
+    const response = await getAgentSession(idNum);
+    const data = Array.isArray(response) ? response[0] : response;
     
-    // 更新当前会话信息
-    Object.assign(currentSession, data);
+    // Update current session
+    Object.keys(currentSession).forEach(k => delete currentSession[k]);
+    Object.assign(currentSession, data || {});
     
     message.success('会话信息获取成功');
   } catch (error: any) {
     message.error(`获取会话信息失败: ${error.message}`);
-
   } finally {
     searching.value = false;
   }
@@ -364,31 +359,31 @@ const searchSession = async () => {
 
 // 刷新当前会话
 const refreshSession = async () => {
-  if (!currentSession.session_id) {
+  if (!currentSession.id) {
     message.warning('请先搜索一个会话');
     return;
   }
   
-  searchSessionId.value = currentSession.session_id;
+  searchSessionId.value = String(currentSession.id);
   await searchSession();
 };
 
 // 添加到历史记录
 const addToHistory = () => {
-  if (!currentSession.session_id) {
+  if (!currentSession.id) {
     message.warning('没有当前会话信息');
     return;
   }
   
   // 检查是否已存在
-  const exists = sessionHistory.value.find(session => session.session_id === currentSession.session_id);
+  const exists = sessionHistory.value.find(session => session.id === currentSession.id);
   if (exists) {
     message.warning('该会话已在历史记录中');
     return;
   }
   
   // 添加到历史记录
-  sessionHistory.value.unshift({ ...currentSession } as SessionInfoResponse);
+  sessionHistory.value.unshift({ ...currentSession });
   saveHistoryToStorage();
   message.success('已添加到历史记录');
 };
@@ -408,15 +403,15 @@ const clearAllHistory = () => {
 };
 
 // 加载历史会话
-const loadHistorySession = (session: SessionInfoResponse) => {
+const loadHistorySession = (session: Record<string, any>) => {
   Object.assign(currentSession, session);
-  searchSessionId.value = session.session_id;
+  searchSessionId.value = String(session.id);
   message.success('历史会话已加载');
 };
 
 // 导出当前会话
 const exportSession = () => {
-  if (!currentSession.session_id) {
+  if (!currentSession.id) {
     message.warning('没有当前会话信息');
     return;
   }
@@ -425,7 +420,7 @@ const exportSession = () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `session-${currentSession.session_id}-${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `session-${currentSession.id}-${new Date().toISOString().split('T')[0]}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

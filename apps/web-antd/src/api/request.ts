@@ -16,7 +16,7 @@ import { useAuthStore } from '#/store';
 
 import { refreshTokenApi } from './core';
 
-const { apiURL, aiopsURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
+const { apiURL } = useAppConfig(import.meta.env, import.meta.env.PROD);
 
 function createRequestClient(baseURL: string) {
   const client = new RequestClient({
@@ -133,6 +133,5 @@ function createRequestClient(baseURL: string) {
 }
 
 export const requestClient = createRequestClient(apiURL);
-export const requestClientAIOps = createRequestClient(aiopsURL);
 
 export const baseRequestClient = new RequestClient({ baseURL: apiURL });

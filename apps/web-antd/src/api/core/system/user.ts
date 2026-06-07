@@ -45,11 +45,6 @@ export interface UpdateProfileReq {
   enable?: 1 | 2;
 }
 
-export interface WriteOffReq {
-  username: string;
-  password: string;
-}
-
 export interface GetUserListReq {
   page: number;
   size: number;
@@ -84,10 +79,6 @@ export async function updateUserInfo(data: UpdateProfileReq) {
 
 export async function getUserDetailApi(id: number) {
   return requestClient.get(`/user/detail/${id}`);
-}
-
-export async function writeOffAccount(data: WriteOffReq) {
-  return requestClient.post('/user/write_off', data);
 }
 
 export async function getUserStatistics() {

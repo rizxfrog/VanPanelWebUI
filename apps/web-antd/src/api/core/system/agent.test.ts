@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeAgentResponse } from './agent';
+import { normalizeResponse } from '../utils';
 
 describe('agent api helpers', () => {
   it('unwraps standard backend envelopes', () => {
     expect(
-      normalizeAgentResponse({
+      normalizeResponse({
         code: 0,
         data: { sessionId: 's1', intent: 'system_diagnosis' },
         message: 'ok',
@@ -15,7 +15,7 @@ describe('agent api helpers', () => {
 
   it('throws backend error messages', () => {
     expect(() =>
-      normalizeAgentResponse({
+      normalizeResponse({
         code: 1,
         data: {},
         message: 'agent planner is not configured',

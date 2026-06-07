@@ -21,29 +21,6 @@ export interface AuditLog {
   updated_at: string;
 }
 
-// 审计日志批量写入
-export interface AuditLogBatch {
-  logs: AuditLog[];
-}
-
-// 创建审计日志请求
-export interface CreateAuditLogRequest {
-  user_id: number;
-  trace_id: string;
-  ip_address: string;
-  user_agent: string;
-  http_method: string;
-  endpoint: string;
-  operation_type: string;
-  target_type: string;
-  target_id: string;
-  status_code: number;
-  request_body: any;
-  response_body: any;
-  duration: number;
-  error_msg: string;
-}
-
 // 审计日志列表查询参数
 export interface ListAuditLogsRequest {
   page: number;
@@ -117,12 +94,6 @@ export interface BatchDeleteRequest {
   ids: number[];
 }
 
-// 归档审计日志请求
-export interface ArchiveAuditLogsRequest {
-  start_time: number;
-  end_time: number;
-}
-
 // 审计类型信息
 export interface AuditTypeInfo {
   type: string;
@@ -161,15 +132,3 @@ export async function batchDeleteLogsApi(data: BatchDeleteRequest) {
   return requestClient.post('/audit/batch-delete', data);
 }
 
-export async function archiveAuditLogsApi(data: ArchiveAuditLogsRequest) {
-  return requestClient.post('/audit/archive', data);
-}
-
-// 创建接口
-export async function createAuditLogApi(data: CreateAuditLogRequest) {
-  return requestClient.post('/audit/create', data);
-}
-
-export async function batchCreateAuditLogsApi(data: AuditLogBatch) {
-  return requestClient.post('/audit/batch-create', data);
-}

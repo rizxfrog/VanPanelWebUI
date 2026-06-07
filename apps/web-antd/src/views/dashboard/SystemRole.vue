@@ -86,7 +86,7 @@
         :loading="loading"
         row-key="id"
         size="middle"
-        @change="handleTableChange"
+        @change="onTableChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'role'">
@@ -131,7 +131,7 @@
           </template>
           
           <template v-if="column.key === 'created_at'">
-            {{ formatTime(record.created_at) }}
+            {{ formatDate(record.created_at) }}
           </template>
           
           <template v-if="column.key === 'actions'">
@@ -196,7 +196,7 @@
             </div>
             <div class="detail-item">
               <label>创建时间</label>
-              <span>{{ formatTime(viewRoleData.created_at) }}</span>
+              <span>{{ formatDate(viewRoleData.created_at) }}</span>
             </div>
           </div>
         </div>
@@ -474,6 +474,8 @@ import {
 } from '#/api/core/system/system';
 
 import { listApisApi } from '#/api/core/system/api';
+import { usePagination } from '#/composables/usePagination';
+import { formatDate } from '#/utils/formatTime';
 
 // 表单引用
 const formRef = ref<FormInstance>();
@@ -524,16 +526,7 @@ const apiSearchParams = reactive({
 });
 
 // 分页配置
-const paginationConfig = reactive({
-  current: 1,
-  pageSize: 20,
-  total: 0,
-  showSizeChanger: true,
-  showQuickJumper: true,
-  pageSizeOptions: ['10', '20', '50', '100'],
-  showTotal: (total: number, range: [number, number]) => 
-    `第 ${range[0]}-${range[1]} 条，共 ${total} 条`
-});
+const { paginationConfig, handleTableChange, resetPagination } = usePagination();
 
 // API分页配置
 const apiPagination = reactive({
@@ -608,12 +601,6 @@ const currentPageApis = computed(() => {
 });
 
 // 工具函数
-const formatTime = (timestamp: any) => {
-  if (!timestamp) return '-';
-  return new Date(typeof timestamp === 'number' ? timestamp * 1000 : timestamp)
-    .toLocaleDateString('zh-CN');
-};
-
 const formatMethod = (method: any): string => {
   if (typeof method === 'string') {
     return method.toUpperCase();
@@ -836,7 +823,7 @@ const handleApiPageSizeChange = (_: number, size: number) => {
 
 // 事件处理
 const handleSearch = () => {
-  paginationConfig.current = 1;
+  resetPagination();
   fetchRoleList();
 };
 
@@ -844,7 +831,7 @@ const handleReset = () => {
   searchParams.search = '';
   searchParams.status = undefined;
   typeFilter.value = undefined;
-  paginationConfig.current = 1;
+  resetPagination();
   fetchRoleList();
 };
 
@@ -852,9 +839,8 @@ const handleRefresh = () => {
   fetchRoleList();
 };
 
-const handleTableChange = (pagination: any) => {
-  paginationConfig.current = pagination.current;
-  paginationConfig.pageSize = pagination.pageSize;
+const onTableChange = (pagination: any) => {
+  handleTableChange(pagination);
   fetchRoleList();
 };
 
@@ -1043,121 +1029,18 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-/* 保持原有样式不变，只添加新的样式 */
+<style scoped lang="scss">
+@use './_shared.scss';
+
 .role-management {
   padding: 20px;
   background: #f5f5f5;
   min-height: 100vh;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #d9d9d9;
-}
-
-.page-header h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #262626;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.header-actions .ant-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  text-align: center;
-  border: 1px solid #d9d9d9;
-}
-
-.stat-number {
-  font-size: 28px;
-  font-weight: 600;
-  color: #1890ff;
-  margin-bottom: 8px;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #8c8c8c;
-}
-
-.search-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #d9d9d9;
-}
-
-.search-left {
-  display: flex;
-  gap: 12px;
-  flex: 1;
-  align-items: flex-end;
-}
-
-.search-input {
-  flex: 1;
-  max-width: 300px;
-}
-
 .status-select,
 .type-select {
   width: 140px;
-}
-
-.search-right {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.table-container {
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #d9d9d9;
-  overflow: hidden;
-}
-
-.table-container :deep(.ant-table-thead > tr > th) {
-  background: #fafafa;
-  font-weight: 600;
-  color: #262626;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.table-container :deep(.ant-table-tbody > tr:hover > td) {
-  background: #f5f5f5;
 }
 
 .role-info {
@@ -1201,52 +1084,8 @@ onMounted(() => {
   word-break: break-word;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 4px;
-}
-
 .role-detail {
   padding: 8px 0;
-}
-
-.detail-section {
-  margin-bottom: 24px;
-}
-
-.detail-section h3 {
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #262626;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e8e8e8;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.detail-item {
-  padding: 12px;
-  background: #fafafa;
-  border-radius: 6px;
-  border: 1px solid #e8e8e8;
-}
-
-.detail-item label {
-  display: block;
-  font-size: 12px;
-  color: #8c8c8c;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.detail-item span {
-  font-size: 14px;
-  color: #262626;
 }
 
 .apis-list, .users-list {
@@ -1526,24 +1365,6 @@ onMounted(() => {
   justify-content: center;
 }
 
-.table-container :deep(.ant-btn-text) {
-  color: #1890ff;
-}
-
-.table-container :deep(.ant-btn-text:hover) {
-  color: #40a9ff;
-  background: #f0f9ff;
-}
-
-.table-container :deep(.ant-btn-text.ant-btn-dangerous) {
-  color: #ff4d4f;
-}
-
-.table-container :deep(.ant-btn-text.ant-btn-dangerous:hover) {
-  color: #ff7875;
-  background: #fff2f0;
-}
-
 /* 滚动条样式 */
 .selected-list::-webkit-scrollbar,
 .api-list::-webkit-scrollbar,
@@ -1572,28 +1393,9 @@ onMounted(() => {
 }
 
 @media (max-width: 1200px) {
-  .search-section {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-  }
-  
-  .search-left {
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .search-input {
-    max-width: none;
-  }
-  
   .status-select,
   .type-select {
     width: 100%;
-  }
-  
-  .search-right {
-    justify-content: flex-end;
   }
 }
 
@@ -1601,42 +1403,13 @@ onMounted(() => {
   .role-management {
     padding: 12px;
   }
-  
-  .page-header {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-  }
-  
-  .header-actions {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .search-right {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-  
+
   .role-info {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
   }
-  
+
   .role-icon {
     width: 32px;
     height: 32px;
@@ -1647,12 +1420,12 @@ onMounted(() => {
     gap: 8px;
     align-items: flex-start;
   }
-  
+
   .api-actions {
     width: 100%;
     justify-content: flex-end;
   }
-  
+
   .selected-header {
     flex-direction: column;
     gap: 8px;

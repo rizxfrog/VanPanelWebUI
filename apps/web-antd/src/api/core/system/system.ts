@@ -109,12 +109,6 @@ export async function refreshSystemInfoApi() {
     role_ids: number[]; // 角色ID列表
   }
 
-  export interface CheckUserPermissionReq {
-    user_id: number; // 用户ID
-    method: string; // 请求方法
-    path: string; // 请求路径
-  }
-
 // 角色管理
 export async function listRolesApi(data: ListRolesReq) {
   return requestClient.get('/role/list', { params: data });
@@ -158,19 +152,7 @@ export async function revokeRolesFromUserApi(data: RevokeRolesFromUserReq) {
   return requestClient.post('/role/revoke_users', data);
 }
 
-export async function getRoleUsersApi(id: number) {
-  return requestClient.get(`/role/users/${id}`);
-}
-
 export async function getUserRolesApi(id: number) {
   return requestClient.get(`/role/user_roles/${id}`);
 }
 
-// 权限检查
-export async function checkUserPermissionApi(data: CheckUserPermissionReq) {
-  return requestClient.post('/role/check_permission', data);
-}
-
-export async function getUserPermissionsApi(id: number) {
-  return requestClient.get(`/role/user_permissions/${id}`);
-}
